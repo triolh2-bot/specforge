@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpecForge - AI Requirement Expansion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🔓</span>
+                <h1 class="text-xl font-bold gradient-text">SpecForge</h1>
+            </div>
+            <span class="text-sm text-gray-500">AI Requirement Expansion</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <!-- Hero -->
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold text-gray-900 mb-3">
+                Turn "build me an app" into buildable software
+            </h2>
+            <p class="text-gray-600 max-w-2xl mx-auto">
+                Paste your client's 2-5 line brief. Get a complete PRD with Negative Scope Detection™.
+            </p>
+        </div>
+
+        <!-- Input Section -->
+        <div class="bg-white rounded-xl shadow-sm border p-6 mb-8">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                Client Requirements (2-5 lines)
+            </label>
+            <textarea 
+                id="requirements" 
+                rows="4"
+                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                placeholder="Example: I want an e-commerce site for my bakery. Instagram-style feed. People can order and pay. Need admin panel."
+            ></textarea>
+            <button 
+                onclick="analyze()"
+                class="mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-indigo-700 transition"
+            >
+                🔍 Analyze Requirements
+            </button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="hidden text-center py-8">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <p class="text-gray-500 mt-2">Analyzing requirements...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="hidden space-y-6">
+            <!-- RMS Score -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Requirement Maturity Score</h3>
+                    <span id="rms-score" class="text-3xl font-bold text-purple-600">0</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                    <div id="rms-bar" class="bg-gradient-to-r from-purple-600 to-indigo-600 h-3 rounded-full" style="width: 0%"></div>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Detected Domain: <span id="domain" class="font-medium">-</span></p>
+            </div>
+
+            <!-- Negative Scope -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="text-lg font-semibold mb-4">🚨 What's Missing (Negative Scope Detection™)</h3>
+                <p class="text-gray-600 mb-4">These features weren't mentioned but are likely needed:</p>
+                <ul id="missing-features" class="space-y-2">
+                </ul>
+            </div>
+
+            <!-- Clarification Questions -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="text-lg font-semibold mb-4">❓ Clarification Questions</h3>
+                <ul id="questions" class="space-y-3">
+                </ul>
+            </div>
+
+            <!-- PRD Preview -->
+            <div class="bg-white rounded-xl shadow-sm border p-6">
+                <h3 class="text-lg font-semibold mb-4">📄 Generated PRD</h3>
+                <div id="prd-content" class="prose max-w-none">
+                </div>
+                <button class="mt-4 text-purple-600 font-medium hover:underline">
+                    Download Full PRD →
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="border-t mt-12 py-6">
+        <div class="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
+            <p>Built with ❤️ by fewic | SpecForge MVP</p>
+        </div>
+    </footer>
+
+    <script>
+        async function analyze() {
+            const input = document.getElementById('requirements').value.trim();
+            if (!input) return alert('Please enter requirements');
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results').classList.add('hidden');
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({requirements: input})
+                });
+                const data = await response.json();
+
+                // Update RMS
+                document.getElementById('rms-score').textContent = data.rms + '/100';
+                document.getElementById('rms-bar').style.width = data.rms + '%';
+                document.getElementById('domain').textContent = data.domain.charAt(0).toUpperCase() + data.domain.slice(1);
+
+                // Update missing features
+                const missingList = document.getElementById('missing-features');
+                missingList.innerHTML = data.missing_features.map(f => 
+                    `<li class="flex items-center gap-2 text-gray-700">
+                        <span class="text-red-500">○</span> ${f}
+                    </li>`
+                ).join('');
+
+                // Update questions
+                const questionsList = document.getElementById('questions');
+                questionsList.innerHTML = data.clarification_questions.map(q => 
+                    `<li class="flex items-start gap-2 text-gray-700">
+                        <span class="text-purple-500 mt-1">•</span> ${q}
+                    </li>`
+                ).join('');
+
+                // Update PRD
+                const prd = data.prd;
+                document.getElementById('prd-content').innerHTML = `
+                    <h4 class="font-semibold">${prd.title}</h4>
+                    <p class="text-gray-600">${prd.overview}</p>
+                    <h5 class="font-medium mt-4">In Scope:</h5>
+                    <ul class="list-disc pl-5">${prd.scope.in_scope.map(s => `<li>${s}</li>`).join('')}</ul>
+                    <h5 class="font-medium mt-4">Functional Requirements:</h5>
+                    <ul class="list-disc pl-5">${prd.functional_requirements.map(r => `<li>${r}</li>`).join('')}</ul>
+                `;
+
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('results').classList.remove('hidden');
+
+            } catch (error) {
+                alert('Error analyzing requirements');
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
