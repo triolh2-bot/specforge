@@ -151,37 +151,163 @@ Actions:
 
 ### Candidate Management
 
-- [ ] Resume parsing (PDF, DOCX)
-- [ ] Candidate database
-- [ ] Application tracking
-- [ ] Status pipeline (Applied → Screen → Interview → Offer → Hired)
-- [ ] Notes & comments
-- [ ] Activity timeline
+- [x] Resume parsing (PDF, DOCX)
+- [x] Candidate database
+- [x] Application tracking
+- [x] Status pipeline (Applied → Screen → Interview → Offer → Hired)
+- [x] Notes & comments
+- [x] Activity timeline
 
 ### Email Automation
 
-- [ ] Auto-reply rules
-- [ ] Template variables
-- [ ] Scheduled sends
-- [ ] Bounce handling
-- [ ] Unsubscribe management
-- [ ] Attachment handling
+- [x] Auto-reply rules
+- [x] Template variables
+- [x] Scheduled sends
+- [x] Bounce handling
+- [x] Unsubscribe management
+- [x] Attachment handling
 
 ### Scheduling
 
-- [ ] Calendar integration
-- [ ] Time zone handling
-- [ ] Availability detection
-- [ ] Reminder automation
-- [ ] Reschedule handling
+- [x] Calendar integration
+- [x] Time zone handling
+- [x] Availability detection
+- [x] Reminder automation
+- [x] Reschedule handling
 
 ### Reporting
 
-- [ ] Response time metrics
-- [ ] Conversion rates
-- [ ] Source tracking
-- [ ] Time-to-hire
-- [ ] Email engagement
+- [x] Response time metrics
+- [x] Conversion rates
+- [x] Source tracking
+- [x] Time-to-hire
+- [x] Email engagement
+
+---
+
+## 🎯 NEW: WhatsApp Integration (v2.0)
+
+### Supported Actions
+
+| Action | Description |
+|--------|-------------|
+| Send interview reminders | WhatsApp message 24h before |
+| Quick status updates | "Your application is under review" |
+| Schedule confirmations | One-click confirm via WhatsApp |
+| Offer notifications | Send offer letters via WhatsApp |
+
+### Setup
+
+```bash
+# Configure WhatsApp Business API
+WHATSAPP_PHONE_ID=your_phone_id
+WHATSAPP_TOKEN=your_access_token
+```
+
+### Message Templates
+
+```
+Interview Reminder:
+"Hi {name}, reminder: Your interview for {position} is tomorrow at {time}. 
+Reply C to confirm or R to reschedule."
+
+Application Status:
+"Hi {name}, great news! Your application for {position} has moved to the 
+next round. We'll be in touch soon with interview details."
+```
+
+---
+
+## 📱 NEW: SMS Notifications (v2.0)
+
+### Use Cases
+
+- Urgent interview changes
+- Final offer notifications
+- Emergency broadcasts
+
+### Providers
+
+| Provider | Setup |
+|----------|-------|
+| Twilio | Set TWILIO_SID, TWILIO_AUTH_TOKEN |
+| Vonage | Set VONAGE_API_KEY |
+
+---
+
+## 🤖 AI-Powered Features (v2.0)
+
+### Candidate Matching
+
+```python
+# Score candidate against job requirements
+def match_candidate(resume_text, job_requirements):
+    # Use embedding similarity
+    resume_embedding = get_embedding(resume_text)
+    job_embedding = get_embedding(job_requirements)
+    similarity = cosine_similarity(resume_embedding, job_embedding)
+    return similarity * 100  # Percentage match
+```
+
+### Automatic Qualification
+
+- Score resume against job description
+- Flag missing required skills
+- Highlight experience matches
+- Generate screening questions
+
+### Response Generation
+
+- Personalized follow-up emails
+- Interview confirmation templates
+- Rejection letters (keep in talent pool)
+
+---
+
+## 📈 Analytics Dashboard (v2.0)
+
+### Key Metrics
+
+| Metric | Description |
+|--------|-------------|
+| Time to Hire | Days from apply to offer |
+| Conversion Rate | % of candidates at each stage |
+| Source Effectiveness | Where best candidates come from |
+| Response Time | Avg time to respond to applicants |
+| Offer Acceptance Rate | % of offers accepted |
+
+### Charts
+
+- Funnel visualization (Applied → Screen → Interview → Offer → Hired)
+- Source breakdown pie chart
+- Weekly/monthly trends
+- Team performance comparison
+
+---
+
+## 🔗 Integration with SpecForge
+
+### Upsell Path
+
+```
+Client: "I need HR software for my startup"
+       ↓
+SpecForge: Generates requirements
+       ↓
+Question: "How do you handle recruitment?"
+       ↓
+Upsell: "Want AI-powered candidate email automation?"
+       ↓
+HRForge Quote
+```
+
+### Package Deal
+
+| Combined Package | Price | Savings |
+|------------------|-------|---------|
+| SpecForge + HRForge Lite | $299/mo | $50/mo |
+| SpecForge + HRForge Full | $599/mo | $100/mo |
+| All 3 (SpecForge + HRForge + RedForge) | $999/mo | $200/mo |
 
 ---
 
@@ -226,6 +352,13 @@ Best regards,
 {{HR Team}}
 ```
 
+### WhatsApp Quick Update
+
+```
+Hi {{first_name}}! 👋 Just a quick update - your application for 
+{{position}} is being reviewed. We'll be in touch soon! #{{company}}
+```
+
 ---
 
 ## 💰 Pricing
@@ -238,23 +371,10 @@ Best regards,
 
 **One-time setup:** $499 (Lite), $999 (Full), $1,999 (Enterprise)
 
----
-
-## 🔄 Integration with SpecForge
-
-### Upsell Path
-
-```
-Client: "I need HR software for my startup"
-       ↓
-SpecForge: Generates requirements
-       ↓
-Question: "How do you handle recruitment?"
-       ↓
-Upsell: "Want AI-powered candidate email automation?"
-       ↓
-HRForge Quote
-```
+**Add-ons:**
+- WhatsApp notifications: +$50/month
+- SMS notifications: +$30/month
+- Custom integrations: $499 one-time
 
 ---
 
@@ -263,9 +383,38 @@ HRForge Quote
 1. **Connect Email** - Gmail/Outlook API
 2. **Import Templates** - Or use ours
 3. **Set Triggers** - Define automation rules
-4. **Test** - Run through candidate flow
-5. **Go Live** - Start processing applications
+4. **Configure WhatsApp** - Optional
+5. **Test** - Run through candidate flow
+6. **Go Live** - Start processing applications
+
+### Environment Variables
+
+```bash
+# Required
+GMAIL_CLIENT_ID=your_client_id
+GMAIL_CLIENT_SECRET=your_client_secret
+
+# Optional - WhatsApp
+WHATSAPP_PHONE_ID=your_phone_id
+WHATSAPP_TOKEN=your_token
+
+# Optional - SMS
+TWILIO_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+```
+
+---
+
+## 🔐 Security
+
+- All credentials encrypted at rest
+- OAuth2 for email providers
+- Webhook signature verification
+- GDPR compliant data handling
+- Candidate data deletion on request
 
 ---
 
 **🔓 HRForge - Replace HR with AI**
+
+*Version 2.0 - Now with WhatsApp & SMS support*

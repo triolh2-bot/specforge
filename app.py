@@ -1,14 +1,281 @@
 """
 SpecForge MVP - AI Requirement Expansion Tool (Enhanced Version)
 Transforms brief requirements into detailed specs with AI enhancement.
+Now with MiniMax OAuth and API integration support.
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 import os
 import re
 import json
+import hashlib
+import time
+import secrets
+from functools import wraps
 
 app = Flask(__name__)
+
+# Secret key for sessions
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# ============================================================
+# MINIMAX OAUTH CONFIGURATION
+# ============================================================
+
+MINIMAX_CLIENT_ID = os.environ.get('MINIMAX_CLIENT_ID', '')
+MINIMAX_CLIENT_SECRET = os.environ.get('MINIMAX_CLIENT_SECRET', '')
+MINIMAX_REDIRECT_URI = os.environ.get('MINIMAX_REDIRECT_URI', 'http://localhost:5000/auth/minimax/callback')
+MINIMAX_AUTH_URL = 'https://platform.minimaxi.com/oauth/authorize'
+MINIMAX_TOKEN_URL = 'https://platform.minimaxi.com/oauth/token'
+MINIMAX_API_BASE = 'https://api.minimaxi.com/v1'
+
+# MiniMax API configuration
+MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '')
+
+# ============================================================
+# OAUTH HELPERS
+# ============================================================
+
+def generate_oauth_state():
+    """Generate random state for OAuth security"""
+    return secrets.token_urlsafe(32)
+
+def get_minimax_auth_url():
+    """Generate MiniMax OAuth authorization URL"""
+    state = generate_oauth_state()
+    session['oauth_state'] = state
+    
+    params = {
+        'client_id': MINIMAX_CLIENT_ID,
+        'redirect_uri': MINIMAX_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': 'api:read api:write user:read',
+        'state': state
+    }
+    
+    import urllib.parse
+    return f"{MINIMAX_AUTH_URL}?{urllib.parse.urlencode(params)}"
+
+def exchange_code_for_token(code):
+    """Exchange authorization code for access token"""
+    import requests
+    
+    data = {
+        'client_id': MINIMAX_CLIENT_ID,
+        'client_secret': MINIMAX_CLIENT_SECRET,
+        'code': code,
+        'grant_type': 'authorization_code',
+        'redirect_uri': MINIMAX_REDIRECT_URI
+    }
+    
+    try:
+        response = requests.post(MINIMAX_TOKEN_URL, data=data, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Token exchange error: {e}")
+        return None
+
+def call_minimax_api(endpoint, method='GET', data=None, use_api_key=False):
+    """Make API calls to MiniMax"""
+    import requests
+    
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    
+    # Use API key if available
+    if use_api_key and MINIMAX_API_KEY:
+        headers['Authorization'] = f'Bearer {MINIMAX_API_KEY}'
+    elif session.get('access_token'):
+        headers['Authorization'] = f"Bearer {session.get('access_token')}"
+    else:
+        return None
+    
+    url = f"{MINIMAX_API_BASE}/{endpoint}"
+    
+    try:
+        if method == 'GET':
+            response = requests.get(url, headers=headers, timeout=30)
+        else:
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+        
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"API call error: {e}")
+        return None
+
+# ============================================================
+# OAUTH ROUTES
+# ============================================================
+
+@app.route('/auth/minimax')
+def minimax_login():
+    """Initiate MiniMax OAuth flow"""
+    if not MINIMAX_CLIENT_ID:
+        return jsonify({
+            "success": False,
+            "error": "MiniMax OAuth not configured. Set MINIMAX_CLIENT_ID environment variable."
+        }), 400
+    
+    auth_url = get_minimax_auth_url()
+    return redirect(auth_url)
+
+@app.route('/auth/minimax/callback')
+def minimax_callback():
+    """Handle OAuth callback"""
+    error = request.args.get('error')
+    if error:
+        return jsonify({"success": False, "error": error}), 400
+    
+    code = request.args.get('code')
+    state = request.args.get('state')
+    
+    # Verify state
+    if state != session.get('oauth_state'):
+        return jsonify({"success": False, "error": "Invalid state parameter"}), 400
+    
+    # Exchange code for token
+    token_data = exchange_code_for_token(code)
+    
+    if not token_data or 'access_token' not in token_data:
+        return jsonify({"success": False, "error": "Failed to obtain access token"}), 400
+    
+    # Store tokens in session
+    session['access_token'] = token_data['access_token']
+    session['refresh_token'] = token_data.get('refresh_token')
+    session['token_expires_at'] = time.time() + token_data.get('expires_in', 3600)
+    session['minimax_authenticated'] = True
+    
+    return redirect(url_for('index'))
+
+@app.route('/auth/status')
+def auth_status():
+    """Check authentication status"""
+    is_authenticated = session.get('minimax_authenticated', False)
+    token_expires = session.get('token_expires_at', 0)
+    
+    return jsonify({
+        "authenticated": is_authenticated,
+        "provider": "minimax" if is_authenticated else None,
+        "token_expires_in": max(0, int(token_expires - time.time())) if is_authenticated else 0
+    })
+
+@app.route('/auth/logout')
+def logout():
+    """Logout and clear session"""
+    session.clear()
+    return redirect(url_for('index'))
+
+# ============================================================
+# MINIMAX API ROUTES
+# ============================================================
+
+@app.route('/api/minimax/chat', methods=['POST'])
+def minimax_chat():
+    """Chat with MiniMax API"""
+    if not MINIMAX_API_KEY and not session.get('access_token'):
+        return jsonify({
+            "success": False,
+            "error": "Not authenticated. Use MiniMax OAuth or set MINIMAX_API_KEY"
+        }), 401
+    
+    data = request.json
+    message = data.get('message', '')
+    model = data.get('model', 'abab6.5s-chat')
+    
+    if not message:
+        return jsonify({"success": False, "error": "Message is required"}), 400
+    
+    # Call MiniMax API
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": message}
+        ]
+    }
+    
+    response = call_minimax_api('chat/completions', method='POST', data=payload, use_api_key=bool(MINIMAX_API_KEY))
+    
+    if response:
+        return jsonify({
+            "success": True,
+            "response": response
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": "Failed to get response from MiniMax"
+        }), 500
+
+@app.route('/api/minimax/enhance', methods=['POST'])
+def enhance_with_minimax():
+    """Enhance requirements using MiniMax AI"""
+    if not MINIMAX_API_KEY and not session.get('access_token'):
+        return jsonify({
+            "success": False,
+            "error": "MiniMax not configured. Set MINIMAX_API_KEY or authenticate via OAuth"
+        }), 401
+    
+    data = request.json
+    requirements = data.get('requirements', '')
+    
+    if not requirements:
+        return jsonify({"success": False, "error": "Requirements are required"}), 400
+    
+    # Build enhancement prompt
+    prompt = f"""Analyze these requirements and provide enhancement suggestions:
+
+Requirements: {requirements}
+
+Provide:
+1. Missing technical components
+2. Security considerations  
+3. Scalability recommendations
+4. User experience improvements
+5. Potential risks
+
+Be concise and actionable."""
+    
+    payload = {
+        "model": "abab6.5s-chat",
+        "messages": [
+            {"role": "system", "content": "You are a senior software architect helping to refine project requirements."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
+    
+    response = call_minimax_api('chat/completions', method='POST', data=payload, use_api_key=bool(MINIMAX_API_KEY))
+    
+    if response and 'choices' in response:
+        return jsonify({
+            "success": True,
+            "enhancement": response['choices'][0]['message']['content'],
+            "model": response.get('model', 'minimax')
+        })
+    else:
+        return jsonify({
+            "success": False,
+            "error": "Failed to get enhancement from MiniMax"
+        }), 500
+
+# ============================================================
+# DECORATORS
+# ============================================================
+
+def minimax_required(f):
+    """Decorator requiring MiniMax authentication"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('minimax_authenticated') and not MINIMAX_API_KEY:
+            return jsonify({
+                "success": False,
+                "error": "MiniMax authentication required"
+            }), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Domain templates - what features are typically needed
 DOMAIN_TEMPLATES = {
@@ -246,7 +513,7 @@ def detect_conflicts(text):
     return conflicts
 
 # Generate PRD
-def generate_prd(client_input, use_ai=False):
+def generate_prd(client_input, use_ai=False, ai_provider='minimax'):
     domain = detect_domain(client_input)
     missing_features = detect_missing_features(domain, client_input)
     questions = generate_questions(domain, client_input, missing_features)
@@ -254,13 +521,14 @@ def generate_prd(client_input, use_ai=False):
     conflicts = detect_conflicts(client_input)
     rms = calculate_rms(client_input, domain)
     
-    # AI enhancement (placeholder - can integrate with OpenAI/Anthropic)
+    # AI enhancement
     ai_enhanced = None
-    if use_ai:
-        # TODO: Add OpenAI API call for advanced enhancement
+    if use_ai and (MINIMAX_API_KEY or session.get('minimax_authenticated')):
+        # Trigger MiniMax enhancement via API
         ai_enhanced = {
-            "status": "AI enhancement requires API key",
-            "suggestion": "Configure OPENAI_API_KEY for advanced analysis"
+            "status": "ready",
+            "provider": ai_provider,
+            "endpoint": "/api/minimax/enhance"
         }
     
     return {
@@ -283,8 +551,8 @@ def generate_prd(client_input, use_ai=False):
                 "in_scope": [
                     f"Core {domain} functionality",
                     "User authentication and management",
-                    "Admin dashboard",
-                    "Basic analytics/reporting"
+                    "Admin dashboard with analytics",
+                    "Basic reporting"
                 ],
                 "out_of_scope": [
                     "Advanced AI/ML features",
@@ -315,7 +583,14 @@ def generate_prd(client_input, use_ai=False):
                 "Create technical specification"
             ]
         },
-        "ai_enhanced": ai_enhanced
+        "ai_enhanced": ai_enhanced,
+        "ai_providers": {
+            "minimax": {
+                "oauth_enabled": bool(MINIMAX_CLIENT_ID),
+                "api_key_enabled": bool(MINIMAX_API_KEY),
+                "models": ["abab6.5s-chat", "abab6-chat"]
+            }
+        }
     }
 
 def generate_functional_reqs(domain, text):
@@ -354,6 +629,7 @@ def analyze():
     data = request.json
     client_input = data.get('requirements', '')
     use_ai = data.get('ai_enhance', False)
+    ai_provider = data.get('ai_provider', 'minimax')
     
     if not client_input or len(client_input.strip()) < 10:
         return jsonify({
@@ -361,25 +637,35 @@ def analyze():
             "error": "Please enter at least 10 characters describing your requirements"
         }), 400
     
-    result = generate_prd(client_input, use_ai)
+    result = generate_prd(client_input, use_ai, ai_provider)
     return jsonify(result)
 
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({
         "status": "healthy",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "features": [
             "Domain detection",
             "Negative scope detection",
             "RMS calculation",
             "Clarification questions",
             "Conflict detection",
-            "PRD generation"
-        ]
+            "PRD generation",
+            "MiniMax OAuth authentication",
+            "MiniMax API integration"
+        ],
+        "ai_providers": {
+            "minimax": {
+                "oauth_configured": bool(MINIMAX_CLIENT_ID),
+                "api_key_configured": bool(MINIMAX_API_KEY)
+            }
+        }
     })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"🔓 SpecForge running on http://localhost:{port}")
+    print(f"   MiniMax OAuth: {'✓' if MINIMAX_CLIENT_ID else '✗'}")
+    print(f"   MiniMax API Key: {'✓' if MINIMAX_API_KEY else '✗'}")
     app.run(debug=True, port=port, host='0.0.0.0')
