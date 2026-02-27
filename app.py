@@ -11,12 +11,39 @@ import json
 import hashlib
 import time
 import secrets
+import logging
 from functools import wraps
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
 # Secret key for sessions
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# Production error handlers
+@app.errorhandler(404)
+def not_found(e): return jsonify({"error": "Not Found", "status": 404}), 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    logger.error(f"500: {request.path}")
+    return jsonify({"error": "Internal Server Error", "status": 500}), 500
+
+@app.errorhandler(400)
+def bad_request(e): return jsonify({"error": "Bad Request", "status": 400}), 400
+
+@app.errorhandler(403)
+def forbidden(e): return jsonify({"error": "Forbidden", "status": 403}), 403
+
+@app.errorhandler(401)
+def unauthorized(e): return jsonify({"error": "Unauthorized", "status": 401}), 401
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"Unhandled: {str(e)}")
+    return jsonify({"error": "Internal Server Error", "status": 500}), 500
 
 # ============================================================
 # MINIMAX OAUTH CONFIGURATION
@@ -24,7 +51,7 @@ app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
 MINIMAX_CLIENT_ID = os.environ.get('MINIMAX_CLIENT_ID', '')
 MINIMAX_CLIENT_SECRET = os.environ.get('MINIMAX_CLIENT_SECRET', '')
-MINIMAX_REDIRECT_URI = os.environ.get('MINIMAX_REDIRECT_URI', 'http://localhost:5000/auth/minimax/callback')
+MINIMAX_REDIRECT_URI = os.environ.get('MINIMAX_REDIRECT_URI', '')
 MINIMAX_AUTH_URL = 'https://platform.minimaxi.com/oauth/authorize'
 MINIMAX_TOKEN_URL = 'https://platform.minimaxi.com/oauth/token'
 MINIMAX_API_BASE = 'https://api.minimaxi.com/v1'
@@ -668,4 +695,4 @@ if __name__ == '__main__':
     print(f"🔓 SpecForge running on http://localhost:{port}")
     print(f"   MiniMax OAuth: {'✓' if MINIMAX_CLIENT_ID else '✗'}")
     print(f"   MiniMax API Key: {'✓' if MINIMAX_API_KEY else '✗'}")
-    app.run(debug=True, port=port, host='0.0.0.0')
+    app.run(debug=False, port=port, host='0.0.0.0')
