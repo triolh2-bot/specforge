@@ -13,6 +13,13 @@ import time
 import secrets
 import logging
 from functools import wraps
+from datetime import datetime
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+import requests
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,6 +65,9 @@ MINIMAX_API_BASE = 'https://api.minimaxi.com/v1'
 
 # MiniMax API configuration
 MINIMAX_API_KEY = os.environ.get('MINIMAX_API_KEY', '')
+MINIMAX_GROUP_ID = os.environ.get('MINIMAX_GROUP_ID', '')
+MINIMAX_CHAT_API_URL = 'https://api.minimax.chat/v1/text/chatcompletion_v2'
+MINIMAX_MODEL = 'MiniMax-M2.5'
 
 # ============================================================
 # OAUTH HELPERS
@@ -105,8 +115,6 @@ def exchange_code_for_token(code):
 
 def call_minimax_api(endpoint, method='GET', data=None, use_api_key=False):
     """Make API calls to MiniMax"""
-    import requests
-    
     headers = {
         'Content-Type': 'application/json'
     }
@@ -131,6 +139,112 @@ def call_minimax_api(endpoint, method='GET', data=None, use_api_key=False):
         return response.json()
     except Exception as e:
         print(f"API call error: {e}")
+        return None
+
+
+def call_minimax_chat_api(requirements, domain, missing_features):
+    """
+    Call MiniMax Chat API for requirement enhancement.
+    Returns structured analysis with PRD summary, questions, tech stack, risks, and timeline.
+    """
+    if not MINIMAX_API_KEY or not MINIMAX_GROUP_ID:
+        logger.warning("MiniMax API key or Group ID not configured")
+        return None
+    
+    # Build the prompt for structured output
+    missing_features_text = "\n".join([f"- {f}" for f in missing_features]) if missing_features else "None detected"
+    
+    prompt = f"""Analyze the following software requirements and provide a structured enhancement analysis.
+
+REQUIREMENTS:
+{requirements}
+
+DETECTED DOMAIN: {domain}
+
+MISSING FEATURES DETECTED:
+{missing_features_text}
+
+Please provide a structured JSON response with the following fields:
+
+1. "prd_summary": A comprehensive 2-3 paragraph summary of the project that would serve as a PRD overview. Include the purpose, target users, and key value propositions.
+
+2. "clarification_questions": An array of exactly 5 smart, specific clarification questions tailored to these requirements. Questions should be actionable and help scope the project better.
+
+3. "tech_stack_recommendation": A recommended technology stack for the {domain} domain, including frontend, backend, database, and any specific frameworks/libraries.
+
+4. "risk_factors": An array of exactly 3 specific risk factors relevant to this particular project based on the requirements and domain.
+
+5. "estimated_timeline": A realistic development timeline estimate (e.g., "8-12 weeks", "3-4 months") with brief justification.
+
+Return ONLY valid JSON in this exact format:
+{{
+  "prd_summary": "string",
+  "clarification_questions": ["q1", "q2", "q3", "q4", "q5"],
+  "tech_stack_recommendation": "string",
+  "risk_factors": ["risk1", "risk2", "risk3"],
+  "estimated_timeline": "string"
+}}"""
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {MINIMAX_API_KEY}'
+    }
+    
+    payload = {
+        "model": MINIMAX_MODEL,
+        "messages": [
+            {"role": "system", "content": "You are an expert software architect and product manager. Provide structured, actionable analysis in valid JSON format only."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7,
+        "max_tokens": 2000
+    }
+    
+    try:
+        url = f"{MINIMAX_CHAT_API_URL}?GroupId={MINIMAX_GROUP_ID}"
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response.raise_for_status()
+        
+        result = response.json()
+        
+        # Check for API errors
+        if 'base_resp' in result:
+            base_resp = result['base_resp']
+            status_msg = base_resp.get('status_msg', 'Unknown error')
+            logger.warning(f"MiniMax API error: {status_msg}")
+            return None
+        
+        # Extract the content from MiniMax response
+        if 'choices' in result and len(result['choices']) > 0:
+            content = result['choices'][0]['message']['content']
+            
+            # Try to parse JSON from the content
+            try:
+                # Find JSON in the response (in case there's extra text)
+                json_start = content.find('{')
+                json_end = content.rfind('}')
+                if json_start != -1 and json_end != -1:
+                    json_str = content[json_start:json_end + 1]
+                    parsed_result = json.loads(json_str)
+                    return parsed_result
+                else:
+                    logger.warning("No JSON found in MiniMax response")
+                    return None
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse MiniMax response as JSON: {e}")
+                return None
+        else:
+            logger.warning("Unexpected MiniMax response format")
+            return None
+            
+    except requests.exceptions.Timeout:
+        logger.error("MiniMax API call timed out")
+        return None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"MiniMax API call failed: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error calling MiniMax API: {e}")
         return None
 
 # ============================================================
@@ -491,7 +605,7 @@ def generate_questions(domain, text, missing_features):
     # Payment questions
     if "payment" in text_lower or "buy" in text_lower or "order" in text_lower or "purchase" in text_lower:
         questions.append("Which payment providers should be integrated? (Stripe, PayPal, Razorpay, etc.)")
-        questions.append("Do you need support for subscriptions/reurring payments?")
+        questions.append("Do you need support for subscriptions/recurring payments?")
     
     # Mobile questions
     if "mobile" in text_lower or "ios" in text_lower or "android" in text_lower:
@@ -548,15 +662,51 @@ def generate_prd(client_input, use_ai=False, ai_provider='minimax'):
     conflicts = detect_conflicts(client_input)
     rms = calculate_rms(client_input, domain)
     
-    # AI enhancement
+    # AI enhancement - silently fallback to rule-based if API fails
     ai_enhanced = None
+    minimax_result = None
+    
     if use_ai and (MINIMAX_API_KEY or session.get('minimax_authenticated')):
-        # Trigger MiniMax enhancement via API
-        ai_enhanced = {
-            "status": "ready",
-            "provider": ai_provider,
-            "endpoint": "/api/minimax/enhance"
-        }
+        # Call MiniMax API for real enhancement
+        minimax_result = call_minimax_chat_api(client_input, domain, missing_features)
+        
+        if minimax_result:
+            ai_enhanced = {
+                "status": "success",
+                "provider": ai_provider,
+                "data": minimax_result
+            }
+            # Use AI-generated questions if available
+            if "clarification_questions" in minimax_result and minimax_result["clarification_questions"]:
+                questions = minimax_result["clarification_questions"][:5]
+        else:
+            # Silent fallback - API failed but we don't show error to user
+            logger.info("MiniMax API enhancement failed, using rule-based fallback")
+            ai_enhanced = {
+                "status": "fallback",
+                "provider": ai_provider,
+                "message": "Using rule-based analysis (AI enhancement unavailable)"
+            }
+    
+    # Build PRD with AI-enhanced content if available
+    prd_summary = client_input[:300]
+    tech_stack = None
+    risks = [
+        "Scope creep from unclear requirements",
+        "Third-party API integration challenges",
+        "Timeline delays from dependencies"
+    ]
+    timeline = "To be determined"
+    
+    if minimax_result:
+        if "prd_summary" in minimax_result:
+            prd_summary = minimax_result["prd_summary"]
+        if "tech_stack_recommendation" in minimax_result:
+            tech_stack = minimax_result["tech_stack_recommendation"]
+        if "risk_factors" in minimax_result and minimax_result["risk_factors"]:
+            risks = minimax_result["risk_factors"][:3]
+        if "estimated_timeline" in minimax_result:
+            timeline = minimax_result["estimated_timeline"]
     
     return {
         "success": True,
@@ -570,7 +720,7 @@ def generate_prd(client_input, use_ai=False, ai_provider='minimax'):
             "title": "Project Specification Document",
             "version": "1.0",
             "overview": {
-                "summary": client_input[:300],
+                "summary": prd_summary,
                 "project_type": domain,
                 "target_users": implied_users
             },
@@ -595,15 +745,12 @@ def generate_prd(client_input, use_ai=False, ai_provider='minimax'):
                 "reliability": "99.9% uptime target"
             },
             "technical_constraints": {
-                "timeline": "To be determined",
+                "timeline": timeline,
                 "budget": "To be determined",
-                "team_size": "1-3 developers recommended"
+                "team_size": "1-3 developers recommended",
+                "tech_stack": tech_stack
             },
-            "risks": [
-                "Scope creep from unclear requirements",
-                "Third-party API integration challenges",
-                "Timeline delays from dependencies"
-            ],
+            "risks": risks,
             "next_steps": [
                 "Answer clarification questions",
                 "Finalize scope with stakeholders",
@@ -615,7 +762,7 @@ def generate_prd(client_input, use_ai=False, ai_provider='minimax'):
             "minimax": {
                 "oauth_enabled": bool(MINIMAX_CLIENT_ID),
                 "api_key_enabled": bool(MINIMAX_API_KEY),
-                "models": ["abab6.5s-chat", "abab6-chat"]
+                "models": [MINIMAX_MODEL, "abab6.5s-chat", "abab6-chat"]
             }
         }
     }

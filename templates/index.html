@@ -135,19 +135,27 @@
 
             <!-- PRD Preview -->
             <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="text-lg font-semibold mb-4">📄 Generated PRD</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">📄 Generated PRD</h3>
+                    <button 
+                        onclick="downloadPRD()"
+                        class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition flex items-center gap-2"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download PRD
+                    </button>
+                </div>
                 <div id="prd-content" class="prose max-w-none">
                 </div>
-                <button class="mt-4 text-purple-600 font-medium hover:underline">
-                    Download Full PRD →
-                </button>
             </div>
         </div>
     </main>
 
     <footer class="border-t mt-12 py-6">
         <div class="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
-            <p>Built with ❤️ by fewic | SpecForge MVP v2.0</p>
+            <p>Built with ❤️ by fewic | SpecForge v2.0</p>
         </div>
     </footer>
 
@@ -184,6 +192,9 @@
         
         checkAuth();
 
+        // Store analysis result for download
+        let currentAnalysisResult = null;
+
         async function analyze() {
             const input = document.getElementById('requirements').value.trim();
             if (!input) return alert('Please enter requirements');
@@ -205,6 +216,9 @@
                     })
                 });
                 const data = await response.json();
+                
+                // Store result for download
+                currentAnalysisResult = data;
 
                 // Update RMS
                 document.getElementById('rms-score').textContent = data.rms + '/100';
@@ -229,41 +243,101 @@
 
                 // Update PRD
                 const prd = data.prd;
-                document.getElementById('prd-content').innerHTML = `
-                    <h4 class="font-semibold">${prd.title}</h4>
-                    <p class="text-gray-600">${prd.overview.summary}</p>
-                    <h5 class="font-medium mt-4">In Scope:</h5>
-                    <ul class="list-disc pl-5">${prd.scope.in_scope.map(s => `<li>${s}</li>`).join('')}</ul>
-                    <h5 class="font-medium mt-4">Functional Requirements:</h5>
-                    <ul class="list-disc pl-5">${prd.functional_requirements.map(r => `<li>${r}</li>`).join('')}</ul>
+                let prdHTML = `
+                    <h4 class="font-semibold text-lg mb-2">${prd.title}</h4>
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <h5 class="font-medium text-gray-700">Overview</h5>
+                        <p class="text-gray-600 mt-1">${prd.overview.summary}</p>
+                        <p class="text-sm text-gray-500 mt-2">Project Type: ${prd.overview.project_type} | Target Users: ${prd.overview.target_users.join(', ')}</p>
+                    </div>
                 `;
+                
+                // Add tech stack if available
+                if (prd.technical_constraints.tech_stack) {
+                    prdHTML += `
+                        <div class="mb-4">
+                            <h5 class="font-medium text-gray-700">Recommended Tech Stack</h5>
+                            <p class="text-gray-600 mt-1">${prd.technical_constraints.tech_stack}</p>
+                        </div>
+                    `;
+                }
+                
+                prdHTML += `
+                    <div class="mb-4">
+                        <h5 class="font-medium text-gray-700">In Scope</h5>
+                        <ul class="list-disc pl-5 mt-1">${prd.scope.in_scope.map(s => `<li class="text-gray-600">${s}</li>`).join('')}</ul>
+                    </div>
+                    <div class="mb-4">
+                        <h5 class="font-medium text-gray-700">Out of Scope</h5>
+                        <ul class="list-disc pl-5 mt-1">${prd.scope.out_of_scope.map(s => `<li class="text-gray-600">${s}</li>`).join('')}</ul>
+                    </div>
+                    <div class="mb-4">
+                        <h5 class="font-medium text-gray-700">Functional Requirements</h5>
+                        <ul class="list-disc pl-5 mt-1">${prd.functional_requirements.map(r => `<li class="text-gray-600">${r}</li>`).join('')}</ul>
+                    </div>
+                    <div class="mb-4">
+                        <h5 class="font-medium text-gray-700">Non-Functional Requirements</h5>
+                        <ul class="list-disc pl-5 mt-1">
+                            <li class="text-gray-600"><strong>Performance:</strong> ${prd.non_functional.performance}</li>
+                            <li class="text-gray-600"><strong>Security:</strong> ${prd.non_functional.security}</li>
+                            <li class="text-gray-600"><strong>Scalability:</strong> ${prd.non_functional.scalability}</li>
+                            <li class="text-gray-600"><strong>Reliability:</strong> ${prd.non_functional.reliability}</li>
+                        </ul>
+                    </div>
+                    <div class="mb-4">
+                        <h5 class="font-medium text-gray-700">Risks</h5>
+                        <ul class="list-disc pl-5 mt-1">${prd.risks.map(r => `<li class="text-gray-600">${r}</li>`).join('')}</ul>
+                    </div>
+                    <div class="mb-4">
+                        <h5 class="font-medium text-gray-700">Timeline Estimate</h5>
+                        <p class="text-gray-600 mt-1">${prd.technical_constraints.timeline}</p>
+                    </div>
+                    <div>
+                        <h5 class="font-medium text-gray-700">Next Steps</h5>
+                        <ul class="list-disc pl-5 mt-1">${prd.next_steps.map(s => `<li class="text-gray-600">${s}</li>`).join('')}</ul>
+                    </div>
+                `;
+                
+                document.getElementById('prd-content').innerHTML = prdHTML;
 
                 // AI Enhancement
                 const aiSection = document.getElementById('ai-enhancement-section');
-                if (useAI && data.ai_enhanced) {
+                if (useAI && data.ai_enhanced && data.ai_enhanced.status === 'success' && data.ai_enhanced.data) {
                     aiSection.classList.remove('hidden');
-                    document.getElementById('ai-enhancement-content').innerHTML = '<p>Loading MiniMax enhancement...</p>';
+                    const aiData = data.ai_enhanced.data;
+                    let aiHTML = '<div class="space-y-4">';
                     
-                    // Call enhancement API
-                    try {
-                        const enhanceResponse = await fetch('/api/minimax/enhance', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({requirements: input})
-                        });
-                        const enhanceData = await enhanceResponse.json();
-                        
-                        if (enhanceData.success) {
-                            document.getElementById('ai-enhancement-content').innerHTML = 
-                                `<pre class="whitespace-pre-wrap text-sm">${enhanceData.enhancement}</pre>`;
-                        } else {
-                            document.getElementById('ai-enhancement-content').innerHTML = 
-                                `<p class="text-red-600">${enhanceData.error}</p>`;
-                        }
-                    } catch (e) {
-                        document.getElementById('ai-enhancement-content').innerHTML = 
-                            `<p class="text-red-600">Failed to get AI enhancement</p>`;
+                    if (aiData.tech_stack_recommendation) {
+                        aiHTML += `
+                            <div>
+                                <h5 class="font-medium text-gray-700">🛠️ Tech Stack Recommendation</h5>
+                                <p class="text-gray-600 mt-1">${aiData.tech_stack_recommendation}</p>
+                            </div>
+                        `;
                     }
+                    
+                    if (aiData.estimated_timeline) {
+                        aiHTML += `
+                            <div>
+                                <h5 class="font-medium text-gray-700">⏱️ Estimated Timeline</h5>
+                                <p class="text-gray-600 mt-1">${aiData.estimated_timeline}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    if (aiData.risk_factors && aiData.risk_factors.length > 0) {
+                        aiHTML += `
+                            <div>
+                                <h5 class="font-medium text-gray-700">⚠️ Risk Factors</h5>
+                                <ul class="list-disc pl-5 mt-1">
+                                    ${aiData.risk_factors.map(r => `<li class="text-gray-600">${r}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    aiHTML += '</div>';
+                    document.getElementById('ai-enhancement-content').innerHTML = aiHTML;
                 } else {
                     aiSection.classList.add('hidden');
                 }
@@ -275,6 +349,131 @@
                 alert('Error analyzing requirements');
                 document.getElementById('loading').classList.add('hidden');
             }
+        }
+
+        function downloadPRD() {
+            if (!currentAnalysisResult) {
+                alert('Please analyze requirements first');
+                return;
+            }
+
+            const data = currentAnalysisResult;
+            const prd = data.prd;
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            
+            let markdown = `# ${prd.title}\n\n`;
+            markdown += `**Version:** ${prd.version}  \n`;
+            markdown += `**Generated:** ${new Date().toLocaleString()}  \n`;
+            markdown += `**Domain:** ${data.domain}  \n`;
+            markdown += `**RMS Score:** ${data.rms}/100  \n\n`;
+            
+            markdown += `---\n\n`;
+            
+            markdown += `## 📋 Overview\n\n`;
+            markdown += `${prd.overview.summary}\n\n`;
+            markdown += `- **Project Type:** ${prd.overview.project_type}\n`;
+            markdown += `- **Target Users:** ${prd.overview.target_users.join(', ')}\n\n`;
+            
+            if (prd.technical_constraints.tech_stack) {
+                markdown += `## 🛠️ Recommended Tech Stack\n\n`;
+                markdown += `${prd.technical_constraints.tech_stack}\n\n`;
+            }
+            
+            markdown += `## ✅ In Scope\n\n`;
+            prd.scope.in_scope.forEach(item => {
+                markdown += `- ${item}\n`;
+            });
+            markdown += `\n`;
+            
+            markdown += `## ❌ Out of Scope\n\n`;
+            prd.scope.out_of_scope.forEach(item => {
+                markdown += `- ${item}\n`;
+            });
+            markdown += `\n`;
+            
+            if (data.missing_features && data.missing_features.length > 0) {
+                markdown += `## 🚨 Missing Features (Negative Scope Detection™)\n\n`;
+                markdown += `*These features weren't mentioned but are likely needed:*\n\n`;
+                data.missing_features.forEach(feature => {
+                    markdown += `- ${feature}\n`;
+                });
+                markdown += `\n`;
+            }
+            
+            markdown += `## 📋 Functional Requirements\n\n`;
+            prd.functional_requirements.forEach(req => {
+                markdown += `- ${req}\n`;
+            });
+            markdown += `\n`;
+            
+            markdown += `## 🔧 Non-Functional Requirements\n\n`;
+            markdown += `- **Performance:** ${prd.non_functional.performance}\n`;
+            markdown += `- **Security:** ${prd.non_functional.security}\n`;
+            markdown += `- **Scalability:** ${prd.non_functional.scalability}\n`;
+            markdown += `- **Reliability:** ${prd.non_functional.reliability}\n\n`;
+            
+            if (data.clarification_questions && data.clarification_questions.length > 0) {
+                markdown += `## ❓ Clarification Questions\n\n`;
+                data.clarification_questions.forEach((q, i) => {
+                    markdown += `${i + 1}. ${q}\n`;
+                });
+                markdown += `\n`;
+            }
+            
+            if (data.conflicts && data.conflicts.length > 0) {
+                markdown += `## ⚠️ Stakeholder Conflicts\n\n`;
+                data.conflicts.forEach(conflict => {
+                    markdown += `- ${conflict}\n`;
+                });
+                markdown += `\n`;
+            }
+            
+            markdown += `## ⚡ Risks\n\n`;
+            prd.risks.forEach(risk => {
+                markdown += `- ${risk}\n`;
+            });
+            markdown += `\n`;
+            
+            markdown += `## ⏱️ Timeline Estimate\n\n`;
+            markdown += `${prd.technical_constraints.timeline}\n\n`;
+            
+            markdown += `## 📝 Next Steps\n\n`;
+            prd.next_steps.forEach((step, i) => {
+                markdown += `${i + 1}. ${step}\n`;
+            });
+            markdown += `\n`;
+            
+            if (data.ai_enhanced && data.ai_enhanced.status === 'success' && data.ai_enhanced.data) {
+                const aiData = data.ai_enhanced.data;
+                markdown += `---\n\n`;
+                markdown += `## 🤖 AI Enhancement (MiniMax)\n\n`;
+                
+                if (aiData.estimated_timeline) {
+                    markdown += `### Timeline\n\n${aiData.estimated_timeline}\n\n`;
+                }
+                
+                if (aiData.risk_factors && aiData.risk_factors.length > 0) {
+                    markdown += `### Risk Factors\n\n`;
+                    aiData.risk_factors.forEach(risk => {
+                        markdown += `- ${risk}\n`;
+                    });
+                    markdown += `\n`;
+                }
+            }
+            
+            markdown += `---\n\n`;
+            markdown += `*Generated by SpecForge - AI Requirement Expansion Platform*\n`;
+            
+            // Create and download the file
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `specforge-prd-${timestamp}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
