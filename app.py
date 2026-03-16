@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, jsonify
 import os
 import re
 import json
+from openai import OpenAI
 
 app = Flask(__name__)
 
@@ -197,7 +198,7 @@ def generate_questions(domain, text, missing_features):
     # Payment questions
     if "payment" in text_lower or "buy" in text_lower or "order" in text_lower or "purchase" in text_lower:
         questions.append("Which payment providers should be integrated? (Stripe, PayPal, Razorpay, etc.)")
-        questions.append("Do you need support for subscriptions/reurring payments?")
+        questions.append("Do you need support for subscriptions/recurring payments?")
     
     # Mobile questions
     if "mobile" in text_lower or "ios" in text_lower or "android" in text_lower:
@@ -383,3 +384,54 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     print(f"🔓 SpecForge running on http://localhost:{port}")
     app.run(debug=True, port=port, host='0.0.0.0')
+
+@app.route(\"/api/minimax/enhance\", methods=[\"POST\"])
+def minimax_enhance():
+    data = request.json
+    requirements = data.get('requirements', '')
+
+    if not requirements:
+        return jsonify({
+            "success": False,
+            "error": "No requirements provided.",
+            "fallback": True
+        }), 400
+
+    try:
+        client = OpenAI(
+            base_url="https://api.minimax.chat/v1",
+            api_key=os.environ.get("MINIMAX_API_KEY"),
+        )
+
+        prompt = f"""You are a senior software architect. Analyze these project requirements and provide:
+1. PRD summary (2-3 paragraphs)
+2. 5 specific clarification questions 
+3. Recommended tech stack for this project
+4. 3 main risk factors
+5. Estimated development timeline
+
+Requirements: {requirements}
+
+Respond in clean markdown format."""
+
+        chat_completion = client.chat.completions.create(
+            model="MiniMax-M2.5",
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        enhancement_text = chat_completion.choices[0].message.content
+
+        return jsonify({
+            "success": True,
+            "enhancement": enhancement_text,
+            "model": "MiniMax-M2.5"
+        })
+
+    except Exception as e:
+        print(f"Error calling MiniMax API: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "fallback": True
+        }), 500
