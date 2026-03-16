@@ -51,7 +51,7 @@ Automatically detects and adapts for:
 
 ```bash
 # Clone the repository
-git clone https://github.com/fewic/specforge.git
+git clone https://github.com/triolh2-bot/specforge.git
 cd specforge
 
 # Install dependencies
