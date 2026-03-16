@@ -1,251 +1,731 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SpecForge - AI Requirement Expansion</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+      .option-btn {
+        transition: all 0.2s;
+        cursor: pointer;
+      }
+      .option-btn:hover {
+        border-color: #764ba2;
+        background-color: #f5f3ff;
+      }
+      .option-btn.selected {
+        border-color: #764ba2;
+        background-color: #ede9fe;
+        color: #4c1d95;
+        font-weight: 500;
+      }
+      .chat-bubble {
+        animation: fadeInUp 0.3s ease-out;
+      }
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
         }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .typing-dot {
+        animation: typing 1.4s infinite;
+      }
+      .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes typing {
+        0%,
+        60%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.4;
+        }
+        30% {
+          transform: translateY(-6px);
+          opacity: 1;
+        }
+      }
+      .progress-step {
+        transition: all 0.3s;
+      }
+      .markdown-content h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: #1f2937;
+      }
+      .markdown-content h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 1rem;
+        margin-bottom: 0.4rem;
+        color: #374151;
+      }
+      .markdown-content ul {
+        list-style: disc;
+        padding-left: 1.5rem;
+        margin-bottom: 0.8rem;
+      }
+      .markdown-content li {
+        margin-bottom: 0.3rem;
+        color: #4b5563;
+        font-size: 0.9rem;
+      }
+      .markdown-content p {
+        color: #4b5563;
+        font-size: 0.9rem;
+        margin-bottom: 0.8rem;
+        line-height: 1.6;
+      }
+      .markdown-content strong {
+        color: #1f2937;
+        font-weight: 600;
+      }
     </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white border-b">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <span class="text-2xl">🔓</span>
-                <h1 class="text-xl font-bold gradient-text">SpecForge</h1>
-            </div>
-            <span class="text-sm text-gray-500">AI Requirement Expansion</span>
+  </head>
+  <body class="bg-gray-50 min-h-screen">
+    <header class="bg-white border-b sticky top-0 z-10">
+      <div
+        class="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center"
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔓</span>
+          <h1 class="text-lg font-bold gradient-text">SpecForge</h1>
         </div>
+        <div
+          id="ai-status"
+          class="flex items-center gap-2 text-xs text-gray-400"
+        >
+          <span class="w-2 h-2 rounded-full bg-gray-300" id="status-dot"></span>
+          <span id="status-text">Checking AI...</span>
+        </div>
+      </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 py-8">
-        <!-- Hero -->
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-900 mb-3">
-                Turn "build me an app" into buildable software
-            </h2>
-            <p class="text-gray-600 max-w-2xl mx-auto">
-                Paste your client's 2-5 line brief. Get a complete PRD with Negative Scope Detection™.
-            </p>
+    <main class="max-w-3xl mx-auto px-4 py-8">
+      <!-- STEP 1: INPUT -->
+      <div id="step-input">
+        <div class="text-center mb-8">
+          <h2 class="text-2xl font-bold text-gray-900 mb-2">
+            Turn "build me an app" into a
+            <span class="gradient-text">buildable spec</span>
+          </h2>
+          <p class="text-gray-500 text-sm">
+            Paste your brief. Answer a few questions. Get a complete PRD.
+          </p>
         </div>
 
-        <!-- Input Section -->
-        <div class="bg-white rounded-xl shadow-sm border p-6 mb-8">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Client Requirements (2-5 lines)
-            </label>
-            <textarea 
-                id="requirements" 
-                rows="4"
-                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                placeholder="Example: I want an e-commerce site for my bakery. Instagram-style feed. People can order and pay. Need admin panel."
-            ></textarea>
-            <button 
-                onclick="analyze()"
-                class="mt-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-indigo-700 transition"
+        <div class="bg-white rounded-2xl shadow-sm border p-6 mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-3">
+            What do you want to build?
+          </label>
+          <textarea
+            id="requirements"
+            rows="4"
+            class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none text-sm resize-none"
+            placeholder="Example: I want to build a chat app like WhatsApp with end-to-end encryption and group chats..."
+          ></textarea>
+
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="text-xs text-gray-400 mr-1 self-center">Try:</span>
+            <button
+              onclick="fillSample('ecommerce')"
+              class="text-xs px-3 py-1 rounded-full border border-gray-200 hover:border-purple-400 hover:text-purple-600 transition text-gray-500"
             >
-                🔍 Analyze Requirements
+              🛒 Online store
             </button>
+            <button
+              onclick="fillSample('saas')"
+              class="text-xs px-3 py-1 rounded-full border border-gray-200 hover:border-purple-400 hover:text-purple-600 transition text-gray-500"
+            >
+              💼 SaaS tool
+            </button>
+            <button
+              onclick="fillSample('social')"
+              class="text-xs px-3 py-1 rounded-full border border-gray-200 hover:border-purple-400 hover:text-purple-600 transition text-gray-500"
+            >
+              💬 Chat app
+            </button>
+            <button
+              onclick="fillSample('marketplace')"
+              class="text-xs px-3 py-1 rounded-full border border-gray-200 hover:border-purple-400 hover:text-purple-600 transition text-gray-500"
+            >
+              🏪 Marketplace
+            </button>
+          </div>
+
+          <button
+            onclick="startAnalysis()"
+            id="analyze-btn"
+            class="mt-4 w-full gradient-bg text-white py-3 rounded-xl font-medium hover:opacity-90 transition text-sm"
+          >
+            Analyze Requirements →
+          </button>
         </div>
 
-        <!-- Loading -->
-        <div id="loading" class="hidden text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            <p class="text-gray-500 mt-2">Analyzing requirements...</p>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="bg-white rounded-xl p-3 border">
+            <div class="text-lg mb-1">🎯</div>
+            <div class="text-xs font-medium text-gray-700">
+              Negative Scope Detection
+            </div>
+            <div class="text-xs text-gray-400 mt-1">Finds what's missing</div>
+          </div>
+          <div class="bg-white rounded-xl p-3 border">
+            <div class="text-lg mb-1">🤖</div>
+            <div class="text-xs font-medium text-gray-700">AI-Powered PRD</div>
+            <div class="text-xs text-gray-400 mt-1">
+              Tailored to your answers
+            </div>
+          </div>
+          <div class="bg-white rounded-xl p-3 border">
+            <div class="text-lg mb-1">📄</div>
+            <div class="text-xs font-medium text-gray-700">Export Ready</div>
+            <div class="text-xs text-gray-400 mt-1">Download as Markdown</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: CHAT Q&A -->
+      <div id="step-questions" class="hidden">
+        <div class="flex items-center gap-3 mb-6">
+          <button
+            onclick="resetAll()"
+            class="text-gray-400 hover:text-gray-600 text-sm"
+          >
+            ← Back
+          </button>
+          <div class="flex-1">
+            <div class="flex justify-between text-xs text-gray-400 mb-1">
+              <span>Clarifying questions</span>
+              <span id="progress-text">1 of 5</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-1.5">
+              <div
+                id="progress-bar"
+                class="gradient-bg h-1.5 rounded-full transition-all duration-500"
+                style="width: 20%"
+              ></div>
+            </div>
+          </div>
         </div>
 
-        <!-- Results -->
-        <div id="results" class="hidden space-y-6">
-            <!-- RMS Score -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold">Requirement Maturity Score</h3>
-                    <span id="rms-score" class="text-3xl font-bold text-purple-600">0</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-3">
-                    <div id="rms-bar" class="bg-gradient-to-r from-purple-600 to-indigo-600 h-3 rounded-full" style="width: 0%"></div>
-                </div>
-                <p class="text-sm text-gray-500 mt-2">Detected Domain: <span id="domain" class="font-medium">-</span></p>
+        <!-- RMS Badge -->
+        <div
+          id="rms-badge"
+          class="flex items-center gap-3 bg-white border rounded-xl p-4 mb-4"
+        >
+          <div class="text-center">
+            <div id="rms-score" class="text-2xl font-bold text-purple-600">
+              --
             </div>
-
-            <!-- Negative Scope -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="text-lg font-semibold mb-4">🚨 What's Missing (Negative Scope Detection™)</h3>
-                <p class="text-gray-600 mb-4">These features weren't mentioned but are likely needed:</p>
-                <ul id="missing-features" class="space-y-2">
-                </ul>
+            <div class="text-xs text-gray-400">RMS Score</div>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <span
+                id="domain-badge"
+                class="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium"
+                >--</span
+              >
+              <span class="text-xs text-gray-500">detected</span>
             </div>
-
-            <!-- Clarification Questions -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="text-lg font-semibold mb-4">❓ Clarification Questions</h3>
-                <ul id="questions" class="space-y-3">
-                </ul>
+            <div class="w-full bg-gray-200 rounded-full h-1.5">
+              <div
+                id="rms-bar"
+                class="gradient-bg h-1.5 rounded-full transition-all"
+                style="width: 0%"
+              ></div>
             </div>
-
-            <!-- AI Enhancement -->
-            <div id="ai-enhancement-section" class="hidden bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="text-lg font-semibold mb-4">✨ AI Enhancement</h3>
-                <div id="ai-enhancement-content" class="prose max-w-none">
-                </div>
-            </div>
-
-            <!-- PRD Preview -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="text-lg font-semibold mb-4">📄 Generated PRD</h3>
-                <div id="prd-content" class="prose max-w-none">
-                </div>
-                <button onclick="downloadPrd()" class="mt-4 text-purple-600 font-medium hover:underline">
-                    Download Full PRD →
-                </button>
-            </div>
+          </div>
         </div>
+
+        <!-- Chat messages -->
+        <div id="chat-messages" class="space-y-4 mb-4"></div>
+
+        <!-- Current question -->
+        <div
+          id="current-question-container"
+          class="bg-white border rounded-2xl p-5 shadow-sm chat-bubble"
+        >
+          <div id="typing-indicator" class="flex gap-1 py-2 px-1">
+            <span class="w-2 h-2 bg-gray-300 rounded-full typing-dot"></span>
+            <span class="w-2 h-2 bg-gray-300 rounded-full typing-dot"></span>
+            <span class="w-2 h-2 bg-gray-300 rounded-full typing-dot"></span>
+          </div>
+          <div id="question-content" class="hidden">
+            <p
+              id="question-text"
+              class="text-sm font-medium text-gray-800 mb-4"
+            ></p>
+            <div
+              id="options-container"
+              class="grid grid-cols-2 gap-2 mb-3"
+            ></div>
+            <div id="other-input-container" class="hidden">
+              <input
+                type="text"
+                id="other-input"
+                placeholder="Type your answer..."
+                class="w-full px-4 py-2.5 border border-purple-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none"
+              />
+              <button
+                onclick="submitOtherAnswer()"
+                class="mt-2 w-full gradient-bg text-white py-2 rounded-xl text-sm font-medium hover:opacity-90 transition"
+              >
+                Continue →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: GENERATING -->
+      <div id="step-generating" class="hidden text-center py-16">
+        <div
+          class="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mb-4"
+        ></div>
+        <p class="text-gray-600 font-medium">Generating your PRD...</p>
+        <p class="text-gray-400 text-sm mt-1">
+          AI is crafting a spec based on your answers
+        </p>
+      </div>
+
+      <!-- STEP 4: RESULT -->
+      <div id="step-result" class="hidden">
+        <div class="flex items-center justify-between mb-6">
+          <button
+            onclick="resetAll()"
+            class="text-gray-400 hover:text-gray-600 text-sm"
+          >
+            ← Start over
+          </button>
+          <button
+            onclick="downloadPrd()"
+            class="gradient-bg text-white px-5 py-2 rounded-xl text-sm font-medium hover:opacity-90 transition"
+          >
+            Download PRD →
+          </button>
+        </div>
+
+        <!-- Result summary cards -->
+        <div class="grid grid-cols-3 gap-3 mb-6">
+          <div class="bg-white border rounded-xl p-4 text-center">
+            <div id="result-rms" class="text-2xl font-bold text-purple-600">
+              --
+            </div>
+            <div class="text-xs text-gray-400 mt-1">RMS Score</div>
+          </div>
+          <div class="bg-white border rounded-xl p-4 text-center">
+            <div
+              id="result-domain"
+              class="text-sm font-semibold text-gray-700 capitalize"
+            >
+              --
+            </div>
+            <div class="text-xs text-gray-400 mt-1">Domain</div>
+          </div>
+          <div class="bg-white border rounded-xl p-4 text-center">
+            <div
+              id="result-missing-count"
+              class="text-2xl font-bold text-amber-500"
+            >
+              --
+            </div>
+            <div class="text-xs text-gray-400 mt-1">Gaps Found</div>
+          </div>
+        </div>
+
+        <!-- Missing features -->
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-4">
+          <h3 class="text-sm font-semibold text-amber-800 mb-3">
+            ⚠️ Missing Features Detected
+          </h3>
+          <ul id="missing-features" class="space-y-1.5"></ul>
+        </div>
+
+        <!-- AI PRD -->
+        <div class="bg-white border rounded-2xl p-6 mb-4">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-sm">🤖</span>
+            <h3 class="text-sm font-semibold text-gray-800">
+              AI-Generated PRD
+            </h3>
+            <span
+              id="ai-provider-badge"
+              class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full"
+            ></span>
+          </div>
+          <div id="prd-content" class="markdown-content"></div>
+        </div>
+      </div>
     </main>
 
     <footer class="border-t mt-12 py-6">
-        <div class="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
-            <p>Built with ❤️ by fewic | SpecForge MVP</p>
-        </div>
+      <div class="max-w-3xl mx-auto px-4 text-center text-gray-400 text-xs">
+        Built with ❤️ by fewic | SpecForge
+      </div>
     </footer>
 
     <script>
-        async function analyze() {
-            const input = document.getElementById('requirements').value.trim();
-            if (!input) return alert('Please enter requirements');
+      const SAMPLES = {
+        ecommerce:
+          "I want to build an online store for my handmade jewelry brand. Customers should be able to browse products, add to cart, and pay online. I need an admin panel to manage orders and inventory.",
+        saas: "I want to build a project management SaaS for freelancers. Users pay a monthly subscription. They need task boards, time tracking, and client invoicing.",
+        social:
+          "I want to create a chat app like WhatsApp where users can message each other with end-to-end encryption. Need group chats, media sharing, and user profiles.",
+        marketplace:
+          "I want to build a freelance marketplace like Fiverr where sellers offer services and buyers can purchase them. Need reviews, messaging, and secure payments.",
+      };
 
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('results').classList.add('hidden');
+      let state = {
+        requirements: "",
+        domain: "",
+        rms: 0,
+        missing_features: [],
+        questions: [],
+        currentIndex: 0,
+        answers: {},
+        finalResult: null,
+      };
 
-            try {
-                const response = await fetch('/analyze', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({requirements: input})
-                });
-                const data = await response.json();
+      async function checkAIStatus() {
+        try {
+          const res = await fetch("/auth/status");
+          const data = await res.json();
+          const dot = document.getElementById("status-dot");
+          const text = document.getElementById("status-text");
+          if (data.authenticated) {
+            dot.className = "w-2 h-2 rounded-full bg-green-400";
+            text.textContent = data.provider + " connected";
+          } else {
+            dot.className = "w-2 h-2 rounded-full bg-red-400";
+            text.textContent = "AI not configured";
+          }
+        } catch (e) {}
+      }
 
-                // Update RMS
-                document.getElementById('rms-score').textContent = data.rms + '/100';
-                document.getElementById('rms-bar').style.width = data.rms + '%';
-                document.getElementById('domain').textContent = data.domain.charAt(0).toUpperCase() + data.domain.slice(1);
+      function fillSample(type) {
+        document.getElementById("requirements").value = SAMPLES[type];
+      }
 
-                // Update missing features
-                const missingList = document.getElementById('missing-features');
-                missingList.innerHTML = data.missing_features.map(f => 
-                    `<li class="flex items-center gap-2 text-gray-700">
-                        <span class="text-red-500">○</span> ${f}
-                    </li>`
-                ).join('');
+      async function startAnalysis() {
+        const input = document.getElementById("requirements").value.trim();
+        if (!input) return alert("Please enter your requirements");
 
-                // Update questions
-                const questionsList = document.getElementById('questions');
-                questionsList.innerHTML = data.clarification_questions.map(q => 
-                    `<li class="flex items-start gap-2 text-gray-700">
-                        <span class="text-purple-500 mt-1">•</span> ${q}
-                    </li>`
-                ).join('');
+        const btn = document.getElementById("analyze-btn");
+        btn.textContent = "Analyzing...";
+        btn.disabled = true;
 
-                // Update PRD
-                const prd = data.prd;
-                document.getElementById('prd-content').innerHTML = `
-                    <h4 class="font-semibold">${prd.title}</h4>
-                    <p class="text-gray-600">${prd.overview}</p>
-                    <h5 class="font-medium mt-4">In Scope:</h5>
-                    <ul class="list-disc pl-5">${prd.scope.in_scope.map(s => `<li>${s}</li>`).join('')}</ul>
-                    <h5 class="font-medium mt-4">Functional Requirements:</h5>
-                    <ul class="list-disc pl-5">${prd.functional_requirements.map(r => `<li>${r}</li>`).join('')}</ul>
-                `;
+        try {
+          const res = await fetch("/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ requirements: input }),
+          });
+          const data = await res.json();
 
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('results').classList.remove('hidden');
+          if (!data.success) {
+            alert(data.error);
+            btn.textContent = "Analyze Requirements →";
+            btn.disabled = false;
+            return;
+          }
 
-            } catch (error) {
-                alert('Error analyzing requirements');
-                document.getElementById('loading').classList.add('hidden');
-            }
+          state.requirements = input;
+          state.domain = data.domain;
+          state.rms = data.rms;
+          state.missing_features = data.missing_features;
+          state.questions = data.questions;
+          state.currentIndex = 0;
+          state.answers = {};
+
+          document.getElementById("rms-score").textContent = data.rms + "/100";
+          document.getElementById("rms-bar").style.width = data.rms + "%";
+          document.getElementById("domain-badge").textContent = data.domain;
+
+          document.getElementById("step-input").classList.add("hidden");
+          document.getElementById("step-questions").classList.remove("hidden");
+
+          setTimeout(() => showQuestion(0), 400);
+        } catch (e) {
+          alert("Error analyzing. Please try again.");
+          btn.textContent = "Analyze Requirements →";
+          btn.disabled = false;
         }
+      }
 
-        function downloadPrd() {
-            const rmsScore = document.getElementById('rms-score').textContent;
-            const domain = document.getElementById('domain').textContent;
-            const missingFeaturesList = document.getElementById('missing-features').children;
-            const questionsList = document.getElementById('questions').children;
+      function showQuestion(index) {
+        const q = state.questions[index];
+        const total = state.questions.length;
 
-            let markdownContent = '# Project Specification Document\n\n';
+        document.getElementById("progress-text").textContent =
+          `${index + 1} of ${total}`;
+        document.getElementById("progress-bar").style.width =
+          `${((index + 1) / total) * 100}%`;
 
-            // Requirement Maturity Score
-            markdownContent += '## Requirement Maturity Score\n';
-            markdownContent += `Score: ${rmsScore}\n`;
-            markdownContent += `Detected Domain: ${domain}\n\n`;
+        const container = document.getElementById("current-question-container");
+        container.classList.add("chat-bubble");
 
-            // Missing Features
-            markdownContent += '## Missing Features\n';
-            if (missingFeaturesList.length > 0) {
-                for (let i = 0; i < missingFeaturesList.length; i++) {
-                    markdownContent += `- ${missingFeaturesList[i].textContent.trim()}\n`;
-                }
-            } else {
-                markdownContent += 'None identified.\n';
-            }
-            markdownContent += '\n';
+        document.getElementById("typing-indicator").classList.remove("hidden");
+        document.getElementById("question-content").classList.add("hidden");
 
-            // Clarification Questions
-            markdownContent += '## Clarification Questions\n';
-            if (questionsList.length > 0) {
-                for (let i = 0; i < questionsList.length; i++) {
-                    markdownContent += `- ${questionsList[i].textContent.trim()}\n`;
-                }
-            } else {
-                markdownContent += 'None.\n';
-            }
-            markdownContent += '\n';
+        setTimeout(() => {
+          document.getElementById("typing-indicator").classList.add("hidden");
+          document
+            .getElementById("question-content")
+            .classList.remove("hidden");
 
-            // AI Enhancement
-            markdownContent += '## AI Enhancement\n';
-            const aiSection = document.getElementById('ai-enhancement-content');
-            const aiVisible = !document.getElementById('ai-enhancement-section')
-                .classList.contains('hidden');
-            if (aiVisible && aiSection) {
-                markdownContent += aiSection.innerText.trim() + '\n\n';
-            } else {
-                markdownContent += 'AI enhancement not used.\n\n';
-            }
+          document.getElementById("question-text").textContent = q.question;
 
-            // Functional Requirements
-            const prdDiv = document.getElementById('prd-content');
-            const prdLists = prdDiv.querySelectorAll('ul li');
-            markdownContent += '## Functional Requirements\n';
-            if (prdLists.length > 0) {
-                prdLists.forEach(li => {
-                    markdownContent += `- ${li.textContent.trim()}\n`;
-                });
-            } else {
-                markdownContent += 'None listed.\n';
-            }
-            markdownContent += '\n';
+          const optionsContainer = document.getElementById("options-container");
+          optionsContainer.innerHTML = "";
+          document
+            .getElementById("other-input-container")
+            .classList.add("hidden");
+          document.getElementById("other-input").value = "";
 
-            const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
-            const filename = `specforge-prd-${timestamp}.md`;
+          q.options.forEach((opt) => {
+            const btn = document.createElement("button");
+            btn.className =
+              "option-btn text-left px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-700";
+            btn.textContent = opt;
+            btn.onclick = () => selectOption(q.id, opt, btn);
+            optionsContainer.appendChild(btn);
+          });
 
-            const blob = new Blob([markdownContent], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+          const otherBtn = document.createElement("button");
+          otherBtn.className =
+            "option-btn text-left px-4 py-3 border border-gray-200 rounded-xl text-sm text-gray-500 col-span-2";
+          otherBtn.textContent = "✏️ Other (type your own)";
+          otherBtn.onclick = () => {
+            document
+              .getElementById("other-input-container")
+              .classList.remove("hidden");
+            otherBtn.classList.add("selected");
+            document.getElementById("other-input").focus();
+          };
+          optionsContainer.appendChild(otherBtn);
+        }, 800);
+      }
+
+      function selectOption(questionId, answer, btn) {
+        document
+          .querySelectorAll(".option-btn")
+          .forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        state.answers[questionId] = answer;
+
+        setTimeout(() => moveToNext(questionId, answer), 400);
+      }
+
+      function submitOtherAnswer() {
+        const val = document.getElementById("other-input").value.trim();
+        if (!val) return;
+        const q = state.questions[state.currentIndex];
+        state.answers[q.id] = val;
+        moveToNext(q.id, val);
+      }
+
+      function moveToNext(questionId, answer) {
+        const q = state.questions[state.currentIndex];
+        const chatMessages = document.getElementById("chat-messages");
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble";
+        bubble.innerHTML = `
+            <div class="mb-1">
+                <p class="text-xs text-gray-400 mb-1">${q.question}</p>
+                <div class="flex justify-end">
+                    <span class="inline-block gradient-bg text-white text-sm px-4 py-2 rounded-2xl rounded-tr-sm max-w-xs">
+                        ${answer}
+                    </span>
+                </div>
+            </div>
+        `;
+        chatMessages.appendChild(bubble);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        state.currentIndex++;
+
+        if (state.currentIndex < state.questions.length) {
+          const container = document.getElementById(
+            "current-question-container",
+          );
+          container.className = "bg-white border rounded-2xl p-5 shadow-sm";
+          showQuestion(state.currentIndex);
+        } else {
+          document.getElementById("current-question-container").innerHTML = `
+                <div class="text-center py-2">
+                    <p class="text-sm text-gray-500 mb-4">All questions answered! Ready to generate your PRD.</p>
+                    <button onclick="generatePRD()" class="gradient-bg text-white px-8 py-3 rounded-xl font-medium hover:opacity-90 transition text-sm">
+                        Generate Full PRD →
+                    </button>
+                </div>
+            `;
         }
+      }
+
+      async function generatePRD() {
+        document.getElementById("step-questions").classList.add("hidden");
+        document.getElementById("step-generating").classList.remove("hidden");
+
+        try {
+          const res = await fetch("/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              requirements: state.requirements,
+              domain: state.domain,
+              answers: state.answers,
+              missing_features: state.missing_features,
+              rms: state.rms,
+            }),
+          });
+          const data = await res.json();
+
+          if (!data.success) {
+            alert("Error generating PRD: " + data.error);
+            document.getElementById("step-generating").classList.add("hidden");
+            document
+              .getElementById("step-questions")
+              .classList.remove("hidden");
+            return;
+          }
+
+          state.finalResult = data;
+
+          document.getElementById("result-rms").textContent = data.rms + "/100";
+          document.getElementById("result-domain").textContent = data.domain;
+          document.getElementById("result-missing-count").textContent =
+            data.missing_features.length;
+          document.getElementById("ai-provider-badge").textContent = data.model;
+
+          const missingList = document.getElementById("missing-features");
+          missingList.innerHTML = data.missing_features
+            .map(
+              (f) =>
+                `<li class="flex items-center gap-2 text-sm text-amber-700">
+                    <span class="flex-shrink-0">⚠️</span> ${f}
+                </li>`,
+            )
+            .join("");
+
+          document.getElementById("prd-content").innerHTML = renderMarkdown(
+            data.prd,
+          );
+
+          document.getElementById("step-generating").classList.add("hidden");
+          document.getElementById("step-result").classList.remove("hidden");
+        } catch (e) {
+          alert("Error generating PRD");
+          document.getElementById("step-generating").classList.add("hidden");
+          document.getElementById("step-questions").classList.remove("hidden");
+        }
+      }
+
+      function renderMarkdown(text) {
+        return text
+          .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+          .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+          .replace(/^- (.+)$/gm, "<li>$1</li>")
+          .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
+          .replace(/^\d+\. (.+)$/gm, "<li>$1</li>")
+          .replace(/\n\n/g, "</p><p>")
+          .replace(/^(?!<[hul])/gm, "<p>")
+          .replace(/(?<![>])$/gm, "</p>")
+          .replace(/<p><\/p>/g, "")
+          .replace(/<p>(<[hul])/g, "$1")
+          .replace(/(<\/[hul][^>]*>)<\/p>/g, "$1");
+      }
+
+      function downloadPrd() {
+        if (!state.finalResult) return;
+        const d = state.finalResult;
+
+        let md = "# Project Specification Document\n\n";
+        md += `Generated by SpecForge | AI: ${d.model}\n\n`;
+        md += "---\n\n";
+        md += `## Requirement Maturity Score\n`;
+        md += `**Score:** ${d.rms}/100\n`;
+        md += `**Domain:** ${d.domain}\n\n`;
+
+        md += "## Missing Features Detected\n";
+        d.missing_features.forEach((f) => {
+          md += `- ${f}\n`;
+        });
+        md += "\n";
+
+        md += "## Client Answers\n";
+        Object.entries(d.answers).forEach(([k, v]) => {
+          md += `- **${k}:** ${v}\n`;
+        });
+        md += "\n";
+
+        md += "---\n\n";
+        md += d.prd;
+
+        const timestamp = new Date().toISOString().replace(/[:.-]/g, "");
+        const blob = new Blob([md], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `specforge-prd-${timestamp}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      function resetAll() {
+        state = {
+          requirements: "",
+          domain: "",
+          rms: 0,
+          missing_features: [],
+          questions: [],
+          currentIndex: 0,
+          answers: {},
+          finalResult: null,
+        };
+        document.getElementById("chat-messages").innerHTML = "";
+        document.getElementById("requirements").value = "";
+        const btn = document.getElementById("analyze-btn");
+        btn.textContent = "Analyze Requirements →";
+        btn.disabled = false;
+        ["step-questions", "step-generating", "step-result"].forEach((id) => {
+          document.getElementById(id).classList.add("hidden");
+        });
+        document.getElementById("step-input").classList.remove("hidden");
+      }
+
+      checkAIStatus();
     </script>
-</body>
+  </body>
 </html>
