@@ -435,3 +435,8 @@ Respond in clean markdown format."""
             "error": str(e),
             "fallback": True
         }), 500
+
+
+@app.route('/auth/status', methods=['GET'])
+def auth_status():
+    return jsonify({"authenticated": bool(os.environ.get("MINIMAX_API_KEY"))})
