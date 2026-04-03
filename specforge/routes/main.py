@@ -1,7 +1,8 @@
-from flask import Blueprint, current_app, render_template
+from flask import Blueprint, current_app, g, render_template
 
 from ..contracts import HealthResponse
 from ..http import json_response
+from ..services.analysis_store import persist_analysis
 from ..services.prd import generate_prd
 from ..validation import validate_analyze_request
 
@@ -17,6 +18,13 @@ def index():
 def analyze():
     data = validate_analyze_request()
     result = generate_prd(data["requirements"], data["ai_enhance"], data["ai_provider"])
+    result = persist_analysis(
+        data["requirements"],
+        data["ai_enhance"],
+        data["ai_provider"],
+        result,
+        request_id=getattr(g, "request_id", None),
+    )
     return json_response(result)
 
 
