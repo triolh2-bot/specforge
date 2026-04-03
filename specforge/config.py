@@ -5,10 +5,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+BASE_DIR = os.path.abspath(os.getcwd())
+
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
     PORT = int(os.environ.get("PORT", 5000))
+    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'specforge.db')}")
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MIGRATIONS_DIR = os.path.join(BASE_DIR, "migrations")
 
     MINIMAX_CLIENT_ID = os.environ.get("MINIMAX_CLIENT_ID", "")
     MINIMAX_CLIENT_SECRET = os.environ.get("MINIMAX_CLIENT_SECRET", "")

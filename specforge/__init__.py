@@ -3,10 +3,13 @@ import logging
 from flask import Flask, request
 
 from .config import Config
+from .extensions import db
 from .http import assign_request_id, attach_request_id, error_response
+from .routes.analyses import analyses_bp
 from .routes.api import api_bp
 from .routes.auth import auth_bp
 from .routes.main import main_bp
+from .services.migrations import run_migrations
 from .validation import ValidationError
 
 
@@ -17,12 +20,15 @@ def create_app(config_class=Config):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
+    db.init_app(app)
     app.before_request(assign_request_id)
     app.after_request(attach_request_id)
     register_error_handlers(app, logger)
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(analyses_bp)
+    run_migrations(app)
 
     return app
 
