@@ -1,11 +1,13 @@
 import logging
 
-from flask import Flask, jsonify, request
+from flask import Flask, request
 
 from .config import Config
+from .http import assign_request_id, attach_request_id, error_response
 from .routes.api import api_bp
 from .routes.auth import auth_bp
 from .routes.main import main_bp
+from .validation import ValidationError
 
 
 def create_app(config_class=Config):
@@ -15,6 +17,8 @@ def create_app(config_class=Config):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
+    app.before_request(assign_request_id)
+    app.after_request(attach_request_id)
     register_error_handlers(app, logger)
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -24,28 +28,37 @@ def create_app(config_class=Config):
 
 
 def register_error_handlers(app, logger):
+    @app.errorhandler(ValidationError)
+    def handle_validation_error(error):
+        return error_response(
+            error.message,
+            status=error.status_code,
+            code=error.code,
+            details=error.details,
+        )
+
     @app.errorhandler(404)
     def not_found(_error):
-        return jsonify({"error": "Not Found", "status": 404}), 404
+        return error_response("Not Found", status=404, code="not_found")
 
     @app.errorhandler(500)
     def internal_error(_error):
         logger.error("500: %s", request.path)
-        return jsonify({"error": "Internal Server Error", "status": 500}), 500
+        return error_response("Internal Server Error", status=500, code="internal_server_error")
 
     @app.errorhandler(400)
     def bad_request(_error):
-        return jsonify({"error": "Bad Request", "status": 400}), 400
+        return error_response("Bad Request", status=400, code="bad_request")
 
     @app.errorhandler(403)
     def forbidden(_error):
-        return jsonify({"error": "Forbidden", "status": 403}), 403
+        return error_response("Forbidden", status=403, code="forbidden")
 
     @app.errorhandler(401)
     def unauthorized(_error):
-        return jsonify({"error": "Unauthorized", "status": 401}), 401
+        return error_response("Unauthorized", status=401, code="unauthorized")
 
     @app.errorhandler(Exception)
     def handle_exception(error):
         logger.error("Unhandled: %s", str(error))
-        return jsonify({"error": "Internal Server Error", "status": 500}), 500
+        return error_response("Internal Server Error", status=500, code="internal_server_error")
