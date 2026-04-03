@@ -8,6 +8,7 @@ from .http import assign_request_id, attach_request_id, error_response
 from .routes.analyses import analyses_bp
 from .routes.api import api_bp
 from .routes.auth import auth_bp
+from .routes.jobs import jobs_bp
 from .routes.main import main_bp
 from .services.migrations import run_migrations
 from .validation import ValidationError
@@ -28,6 +29,7 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(analyses_bp)
+    app.register_blueprint(jobs_bp)
     run_migrations(app)
 
     return app
