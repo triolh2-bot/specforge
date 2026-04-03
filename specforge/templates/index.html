@@ -62,13 +62,13 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">
                 Client Requirements (2-5 lines)
             </label>
-            <textarea 
-                id="requirements" 
+            <textarea
+                id="requirements"
                 rows="4"
                 class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                 placeholder="Example: I want an e-commerce site for my bakery. Instagram-style feed. People can order and pay. Need admin panel."
             ></textarea>
-            
+
             <div class="mt-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <label class="flex items-center gap-2">
@@ -79,7 +79,7 @@
                         <option value="minimax">MiniMax</option>
                     </select>
                 </div>
-                <button 
+                <button
                     onclick="analyze()"
                     class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-indigo-700 transition"
                 >
@@ -112,15 +112,13 @@
             <div class="bg-white rounded-xl shadow-sm border p-6">
                 <h3 class="text-lg font-semibold mb-4">🚨 What's Missing (Negative Scope Detection™)</h3>
                 <p class="text-gray-600 mb-4">These features weren't mentioned but are likely needed:</p>
-                <ul id="missing-features" class="space-y-2">
-                </ul>
+                <ul id="missing-features" class="space-y-2"></ul>
             </div>
 
             <!-- Clarification Questions -->
             <div class="bg-white rounded-xl shadow-sm border p-6">
                 <h3 class="text-lg font-semibold mb-4">❓ Clarification Questions</h3>
-                <ul id="questions" class="space-y-3">
-                </ul>
+                <ul id="questions" class="space-y-3"></ul>
             </div>
 
             <!-- AI Enhancement Result -->
@@ -129,15 +127,14 @@
                     <span class="text-xl">🤖</span>
                     <h3 class="text-lg font-semibold">MiniMax AI Enhancement</h3>
                 </div>
-                <div id="ai-enhancement-content" class="prose max-w-none text-gray-700">
-                </div>
+                <div id="ai-enhancement-content" class="prose max-w-none text-gray-700"></div>
             </div>
 
             <!-- PRD Preview -->
             <div class="bg-white rounded-xl shadow-sm border p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">📄 Generated PRD</h3>
-                    <button 
+                    <button
                         onclick="downloadPRD()"
                         class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition flex items-center gap-2"
                     >
@@ -147,8 +144,7 @@
                         Download PRD
                     </button>
                 </div>
-                <div id="prd-content" class="prose max-w-none">
-                </div>
+                <div id="prd-content" class="prose max-w-none"></div>
             </div>
         </div>
     </main>
@@ -160,15 +156,14 @@
     </footer>
 
     <script>
-        // Check auth status on load
         async function checkAuth() {
             try {
                 const response = await fetch('/auth/status');
                 const data = await response.json();
-                
+
                 const authSection = document.getElementById('auth-section');
                 const authBanner = document.getElementById('auth-banner');
-                
+
                 if (data.authenticated) {
                     authSection.innerHTML = `
                         <div class="flex items-center gap-2 text-sm">
@@ -189,10 +184,9 @@
                 console.log('Auth check failed:', e);
             }
         }
-        
+
         checkAuth();
 
-        // Store analysis result for download
         let currentAnalysisResult = null;
 
         async function analyze() {
@@ -216,32 +210,27 @@
                     })
                 });
                 const data = await response.json();
-                
-                // Store result for download
+
                 currentAnalysisResult = data;
 
-                // Update RMS
                 document.getElementById('rms-score').textContent = data.rms + '/100';
                 document.getElementById('rms-bar').style.width = data.rms + '%';
                 document.getElementById('domain').textContent = data.domain.charAt(0).toUpperCase() + data.domain.slice(1);
 
-                // Update missing features
                 const missingList = document.getElementById('missing-features');
-                missingList.innerHTML = data.missing_features.map(f => 
+                missingList.innerHTML = data.missing_features.map(f =>
                     `<li class="flex items-center gap-2 text-gray-700">
                         <span class="text-red-500">○</span> ${f}
                     </li>`
                 ).join('');
 
-                // Update questions
                 const questionsList = document.getElementById('questions');
-                questionsList.innerHTML = data.clarification_questions.map(q => 
+                questionsList.innerHTML = data.clarification_questions.map(q =>
                     `<li class="flex items-start gap-2 text-gray-700">
                         <span class="text-purple-500 mt-1">•</span> ${q}
                     </li>`
                 ).join('');
 
-                // Update PRD
                 const prd = data.prd;
                 let prdHTML = `
                     <h4 class="font-semibold text-lg mb-2">${prd.title}</h4>
@@ -251,8 +240,7 @@
                         <p class="text-sm text-gray-500 mt-2">Project Type: ${prd.overview.project_type} | Target Users: ${prd.overview.target_users.join(', ')}</p>
                     </div>
                 `;
-                
-                // Add tech stack if available
+
                 if (prd.technical_constraints.tech_stack) {
                     prdHTML += `
                         <div class="mb-4">
@@ -261,7 +249,7 @@
                         </div>
                     `;
                 }
-                
+
                 prdHTML += `
                     <div class="mb-4">
                         <h5 class="font-medium text-gray-700">In Scope</h5>
@@ -297,16 +285,15 @@
                         <ul class="list-disc pl-5 mt-1">${prd.next_steps.map(s => `<li class="text-gray-600">${s}</li>`).join('')}</ul>
                     </div>
                 `;
-                
+
                 document.getElementById('prd-content').innerHTML = prdHTML;
 
-                // AI Enhancement
                 const aiSection = document.getElementById('ai-enhancement-section');
                 if (useAI && data.ai_enhanced && data.ai_enhanced.status === 'success' && data.ai_enhanced.data) {
                     aiSection.classList.remove('hidden');
                     const aiData = data.ai_enhanced.data;
                     let aiHTML = '<div class="space-y-4">';
-                    
+
                     if (aiData.tech_stack_recommendation) {
                         aiHTML += `
                             <div>
@@ -315,7 +302,7 @@
                             </div>
                         `;
                     }
-                    
+
                     if (aiData.estimated_timeline) {
                         aiHTML += `
                             <div>
@@ -324,7 +311,7 @@
                             </div>
                         `;
                     }
-                    
+
                     if (aiData.risk_factors && aiData.risk_factors.length > 0) {
                         aiHTML += `
                             <div>
@@ -335,7 +322,7 @@
                             </div>
                         `;
                     }
-                    
+
                     aiHTML += '</div>';
                     document.getElementById('ai-enhancement-content').innerHTML = aiHTML;
                 } else {
@@ -344,7 +331,6 @@
 
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('results').classList.remove('hidden');
-
             } catch (error) {
                 alert('Error analyzing requirements');
                 document.getElementById('loading').classList.add('hidden');
@@ -360,37 +346,35 @@
             const data = currentAnalysisResult;
             const prd = data.prd;
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-            
+
             let markdown = `# ${prd.title}\n\n`;
             markdown += `**Version:** ${prd.version}  \n`;
             markdown += `**Generated:** ${new Date().toLocaleString()}  \n`;
             markdown += `**Domain:** ${data.domain}  \n`;
             markdown += `**RMS Score:** ${data.rms}/100  \n\n`;
-            
             markdown += `---\n\n`;
-            
             markdown += `## 📋 Overview\n\n`;
             markdown += `${prd.overview.summary}\n\n`;
             markdown += `- **Project Type:** ${prd.overview.project_type}\n`;
             markdown += `- **Target Users:** ${prd.overview.target_users.join(', ')}\n\n`;
-            
+
             if (prd.technical_constraints.tech_stack) {
                 markdown += `## 🛠️ Recommended Tech Stack\n\n`;
                 markdown += `${prd.technical_constraints.tech_stack}\n\n`;
             }
-            
+
             markdown += `## ✅ In Scope\n\n`;
             prd.scope.in_scope.forEach(item => {
                 markdown += `- ${item}\n`;
             });
             markdown += `\n`;
-            
+
             markdown += `## ❌ Out of Scope\n\n`;
             prd.scope.out_of_scope.forEach(item => {
                 markdown += `- ${item}\n`;
             });
             markdown += `\n`;
-            
+
             if (data.missing_features && data.missing_features.length > 0) {
                 markdown += `## 🚨 Missing Features (Negative Scope Detection™)\n\n`;
                 markdown += `*These features weren't mentioned but are likely needed:*\n\n`;
@@ -399,19 +383,19 @@
                 });
                 markdown += `\n`;
             }
-            
+
             markdown += `## 📋 Functional Requirements\n\n`;
             prd.functional_requirements.forEach(req => {
                 markdown += `- ${req}\n`;
             });
             markdown += `\n`;
-            
+
             markdown += `## 🔧 Non-Functional Requirements\n\n`;
             markdown += `- **Performance:** ${prd.non_functional.performance}\n`;
             markdown += `- **Security:** ${prd.non_functional.security}\n`;
             markdown += `- **Scalability:** ${prd.non_functional.scalability}\n`;
             markdown += `- **Reliability:** ${prd.non_functional.reliability}\n\n`;
-            
+
             if (data.clarification_questions && data.clarification_questions.length > 0) {
                 markdown += `## ❓ Clarification Questions\n\n`;
                 data.clarification_questions.forEach((q, i) => {
@@ -419,7 +403,7 @@
                 });
                 markdown += `\n`;
             }
-            
+
             if (data.conflicts && data.conflicts.length > 0) {
                 markdown += `## ⚠️ Stakeholder Conflicts\n\n`;
                 data.conflicts.forEach(conflict => {
@@ -427,31 +411,30 @@
                 });
                 markdown += `\n`;
             }
-            
+
             markdown += `## ⚡ Risks\n\n`;
             prd.risks.forEach(risk => {
                 markdown += `- ${risk}\n`;
             });
             markdown += `\n`;
-            
+
             markdown += `## ⏱️ Timeline Estimate\n\n`;
             markdown += `${prd.technical_constraints.timeline}\n\n`;
-            
             markdown += `## 📝 Next Steps\n\n`;
             prd.next_steps.forEach((step, i) => {
                 markdown += `${i + 1}. ${step}\n`;
             });
             markdown += `\n`;
-            
+
             if (data.ai_enhanced && data.ai_enhanced.status === 'success' && data.ai_enhanced.data) {
                 const aiData = data.ai_enhanced.data;
                 markdown += `---\n\n`;
                 markdown += `## 🤖 AI Enhancement (MiniMax)\n\n`;
-                
+
                 if (aiData.estimated_timeline) {
                     markdown += `### Timeline\n\n${aiData.estimated_timeline}\n\n`;
                 }
-                
+
                 if (aiData.risk_factors && aiData.risk_factors.length > 0) {
                     markdown += `### Risk Factors\n\n`;
                     aiData.risk_factors.forEach(risk => {
@@ -460,11 +443,10 @@
                     markdown += `\n`;
                 }
             }
-            
+
             markdown += `---\n\n`;
             markdown += `*Generated by SpecForge - AI Requirement Expansion Platform*\n`;
-            
-            // Create and download the file
+
             const blob = new Blob([markdown], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
