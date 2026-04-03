@@ -1,8 +1,10 @@
 from functools import wraps
 
-from flask import Blueprint, current_app, jsonify, request, session
+from flask import Blueprint, current_app, session
 
+from ..http import error_response, json_response
 from ..services.minimax import call_minimax_api
+from ..validation import validate_minimax_chat_request, validate_minimax_enhance_request
 
 api_bp = Blueprint("api", __name__)
 
@@ -11,7 +13,7 @@ def minimax_required(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
         if not session.get("minimax_authenticated") and not current_app.config["MINIMAX_API_KEY"]:
-            return jsonify({"success": False, "error": "MiniMax authentication required"}), 401
+            return error_response("MiniMax authentication required", status=401, code="authentication_required")
         return func(*args, **kwargs)
 
     return decorated_function
@@ -20,21 +22,14 @@ def minimax_required(func):
 @api_bp.route("/api/minimax/chat", methods=["POST"])
 def minimax_chat():
     if not current_app.config["MINIMAX_API_KEY"] and not session.get("access_token"):
-        return jsonify(
-            {
-                "success": False,
-                "error": "Not authenticated. Use MiniMax OAuth or set MINIMAX_API_KEY",
-            }
-        ), 401
+        return error_response(
+            "Not authenticated. Use MiniMax OAuth or set MINIMAX_API_KEY",
+            status=401,
+            code="unauthorized",
+        )
+    data = validate_minimax_chat_request()
 
-    data = request.json or {}
-    message = data.get("message", "")
-    model = data.get("model", "abab6.5s-chat")
-
-    if not message:
-        return jsonify({"success": False, "error": "Message is required"}), 400
-
-    payload = {"model": model, "messages": [{"role": "user", "content": message}]}
+    payload = {"model": data["model"], "messages": [{"role": "user", "content": data["message"]}]}
     response = call_minimax_api(
         "chat/completions",
         method="POST",
@@ -43,29 +38,23 @@ def minimax_chat():
     )
 
     if response:
-        return jsonify({"success": True, "response": response})
-    return jsonify({"success": False, "error": "Failed to get response from MiniMax"}), 500
+        return json_response({"success": True, "response": response})
+    return error_response("Failed to get response from MiniMax", status=500, code="provider_request_failed")
 
 
 @api_bp.route("/api/minimax/enhance", methods=["POST"])
 def enhance_with_minimax():
     if not current_app.config["MINIMAX_API_KEY"] and not session.get("access_token"):
-        return jsonify(
-            {
-                "success": False,
-                "error": "MiniMax not configured. Set MINIMAX_API_KEY or authenticate via OAuth",
-            }
-        ), 401
-
-    data = request.json or {}
-    requirements = data.get("requirements", "")
-
-    if not requirements:
-        return jsonify({"success": False, "error": "Requirements are required"}), 400
+        return error_response(
+            "MiniMax not configured. Set MINIMAX_API_KEY or authenticate via OAuth",
+            status=401,
+            code="unauthorized",
+        )
+    data = validate_minimax_enhance_request()
 
     prompt = f"""Analyze these requirements and provide enhancement suggestions:
 
-Requirements: {requirements}
+Requirements: {data["requirements"]}
 
 Provide:
 1. Missing technical components
@@ -92,11 +81,11 @@ Be concise and actionable."""
     )
 
     if response and "choices" in response:
-        return jsonify(
+        return json_response(
             {
                 "success": True,
                 "enhancement": response["choices"][0]["message"]["content"],
                 "model": response.get("model", "minimax"),
             }
         )
-    return jsonify({"success": False, "error": "Failed to get enhancement from MiniMax"}), 500
+    return error_response("Failed to get enhancement from MiniMax", status=500, code="provider_request_failed")
