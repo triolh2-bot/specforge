@@ -6,6 +6,8 @@ import urllib.parse
 import requests
 from flask import current_app, session
 
+from .auth_session import get_valid_minimax_access_token
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,10 +52,11 @@ def call_minimax_api(endpoint, method="GET", data=None, use_api_key=False):
 
     if use_api_key and current_app.config["MINIMAX_API_KEY"]:
         headers["Authorization"] = f"Bearer {current_app.config['MINIMAX_API_KEY']}"
-    elif session.get("access_token"):
-        headers["Authorization"] = f"Bearer {session.get('access_token')}"
     else:
-        return None
+        access_token = get_valid_minimax_access_token()
+        if not access_token:
+            return None
+        headers["Authorization"] = f"Bearer {access_token}"
 
     url = f"{current_app.config['MINIMAX_API_BASE']}/{endpoint}"
 
