@@ -1,5 +1,6 @@
 import os
 import secrets
+from datetime import timedelta
 
 from dotenv import load_dotenv
 
@@ -14,6 +15,11 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'specforge.db')}")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MIGRATIONS_DIR = os.path.join(BASE_DIR, "migrations")
+    TOKEN_ENCRYPTION_SECRET = os.environ.get("TOKEN_ENCRYPTION_SECRET", SECRET_KEY)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "False").lower() == "true"
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get("SESSION_LIFETIME_HOURS", 12)))
 
     MINIMAX_CLIENT_ID = os.environ.get("MINIMAX_CLIENT_ID", "")
     MINIMAX_CLIENT_SECRET = os.environ.get("MINIMAX_CLIENT_SECRET", "")

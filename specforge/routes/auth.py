@@ -1,8 +1,7 @@
-import time
-
 from flask import Blueprint, current_app, redirect, request, session, url_for
 
 from ..http import error_response, json_response
+from ..services.auth_session import clear_minimax_tokens, get_minimax_auth_status, rotate_auth_session, store_minimax_tokens
 from ..services.minimax import exchange_code_for_token, get_minimax_auth_url
 
 auth_bp = Blueprint("auth", __name__)
@@ -17,6 +16,7 @@ def minimax_login():
             code="oauth_not_configured",
         )
 
+    rotate_auth_session()
     auth_url = get_minimax_auth_url()
     return redirect(auth_url)
 
@@ -39,28 +39,29 @@ def minimax_callback():
     if not token_data or "access_token" not in token_data:
         return error_response("Failed to obtain access token", status=400, code="token_exchange_failed")
 
-    session["access_token"] = token_data["access_token"]
-    session["refresh_token"] = token_data.get("refresh_token")
-    session["token_expires_at"] = time.time() + token_data.get("expires_in", 3600)
-    session["minimax_authenticated"] = True
+    rotate_auth_session()
+    store_minimax_tokens(
+        token_data["access_token"],
+        refresh_token=token_data.get("refresh_token"),
+        expires_in=token_data.get("expires_in", 3600),
+    )
 
     return redirect(url_for("main.index"))
 
 
 @auth_bp.route("/auth/status")
 def auth_status():
-    is_authenticated = session.get("minimax_authenticated", False)
-    token_expires = session.get("token_expires_at", 0)
+    auth_state = get_minimax_auth_status()
     return json_response(
         {
-            "authenticated": is_authenticated,
-            "provider": "minimax" if is_authenticated else None,
-            "token_expires_in": max(0, int(token_expires - time.time())) if is_authenticated else 0,
+            "authenticated": auth_state["authenticated"],
+            "provider": "minimax" if auth_state["authenticated"] else None,
+            "token_expires_in": auth_state["token_expires_in"],
         }
     )
 
 
 @auth_bp.route("/auth/logout")
 def logout():
-    session.clear()
+    clear_minimax_tokens()
     return redirect(url_for("main.index"))

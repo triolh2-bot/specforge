@@ -3,6 +3,7 @@ from functools import wraps
 from flask import Blueprint, current_app, session
 
 from ..http import error_response, json_response
+from ..services.auth_session import get_minimax_auth_status
 from ..services.minimax import call_minimax_api
 from ..validation import validate_minimax_chat_request, validate_minimax_enhance_request
 
@@ -12,7 +13,8 @@ api_bp = Blueprint("api", __name__)
 def minimax_required(func):
     @wraps(func)
     def decorated_function(*args, **kwargs):
-        if not session.get("minimax_authenticated") and not current_app.config["MINIMAX_API_KEY"]:
+        auth_state = get_minimax_auth_status()
+        if not auth_state["authenticated"] and not current_app.config["MINIMAX_API_KEY"]:
             return error_response("MiniMax authentication required", status=401, code="authentication_required")
         return func(*args, **kwargs)
 
@@ -20,13 +22,8 @@ def minimax_required(func):
 
 
 @api_bp.route("/api/minimax/chat", methods=["POST"])
+@minimax_required
 def minimax_chat():
-    if not current_app.config["MINIMAX_API_KEY"] and not session.get("access_token"):
-        return error_response(
-            "Not authenticated. Use MiniMax OAuth or set MINIMAX_API_KEY",
-            status=401,
-            code="unauthorized",
-        )
     data = validate_minimax_chat_request()
 
     payload = {"model": data["model"], "messages": [{"role": "user", "content": data["message"]}]}
@@ -43,13 +40,8 @@ def minimax_chat():
 
 
 @api_bp.route("/api/minimax/enhance", methods=["POST"])
+@minimax_required
 def enhance_with_minimax():
-    if not current_app.config["MINIMAX_API_KEY"] and not session.get("access_token"):
-        return error_response(
-            "MiniMax not configured. Set MINIMAX_API_KEY or authenticate via OAuth",
-            status=401,
-            code="unauthorized",
-        )
     data = validate_minimax_enhance_request()
 
     prompt = f"""Analyze these requirements and provide enhancement suggestions:

@@ -51,3 +51,16 @@ class AnalysisJob(db.Model):
     max_attempts = db.Column(db.Integer, nullable=False, default=3)
     error_message = db.Column(db.Text, nullable=True)
     result_json = db.Column(db.Text, nullable=True)
+
+
+class AuthSessionCredential(db.Model):
+    __tablename__ = "auth_session_credentials"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+    auth_session_id = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    provider = db.Column(db.String(32), nullable=False, default="minimax")
+    encrypted_access_token = db.Column(db.Text, nullable=True)
+    encrypted_refresh_token = db.Column(db.Text, nullable=True)
+    token_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
