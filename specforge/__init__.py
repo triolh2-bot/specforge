@@ -10,6 +10,7 @@ from .routes.api import api_bp
 from .routes.auth import auth_bp
 from .routes.jobs import jobs_bp
 from .routes.main import main_bp
+from .services.abuse import assign_rate_limit_client_id, enforce_content_length
 from .services.migrations import run_migrations
 from .validation import ValidationError
 
@@ -23,6 +24,8 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     app.before_request(assign_request_id)
+    app.before_request(assign_rate_limit_client_id)
+    app.before_request(enforce_content_length)
     app.after_request(attach_request_id)
     register_error_handlers(app, logger)
     app.register_blueprint(main_bp)
@@ -65,6 +68,14 @@ def register_error_handlers(app, logger):
     @app.errorhandler(401)
     def unauthorized(_error):
         return error_response("Unauthorized", status=401, code="unauthorized")
+
+    @app.errorhandler(413)
+    def payload_too_large(_error):
+        return error_response("Request body is too large", status=413, code="payload_too_large")
+
+    @app.errorhandler(429)
+    def rate_limited(_error):
+        return error_response("Rate limit exceeded", status=429, code="rate_limit_exceeded")
 
     @app.errorhandler(Exception)
     def handle_exception(error):

@@ -3,6 +3,7 @@ from functools import wraps
 from flask import Blueprint, current_app, session
 
 from ..http import error_response, json_response
+from ..services.abuse import rate_limit
 from ..services.auth_session import get_minimax_auth_status
 from ..services.minimax import call_minimax_api
 from ..validation import validate_minimax_chat_request, validate_minimax_enhance_request
@@ -23,6 +24,7 @@ def minimax_required(func):
 
 @api_bp.route("/api/minimax/chat", methods=["POST"])
 @minimax_required
+@rate_limit("minimax_chat")
 def minimax_chat():
     data = validate_minimax_chat_request()
 
@@ -41,6 +43,7 @@ def minimax_chat():
 
 @api_bp.route("/api/minimax/enhance", methods=["POST"])
 @minimax_required
+@rate_limit("minimax_enhance")
 def enhance_with_minimax():
     data = validate_minimax_enhance_request()
 

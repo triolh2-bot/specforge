@@ -16,10 +16,22 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MIGRATIONS_DIR = os.path.join(BASE_DIR, "migrations")
     TOKEN_ENCRYPTION_SECRET = os.environ.get("TOKEN_ENCRYPTION_SECRET", SECRET_KEY)
+    MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH_BYTES", 65536))
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "False").lower() == "true"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get("SESSION_LIFETIME_HOURS", 12)))
+    RATE_LIMITS = {
+        "analyze": {"limit": int(os.environ.get("RATE_LIMIT_ANALYZE", 20)), "window": 60},
+        "minimax_chat": {"limit": int(os.environ.get("RATE_LIMIT_MINIMAX_CHAT", 10)), "window": 60},
+        "minimax_enhance": {"limit": int(os.environ.get("RATE_LIMIT_MINIMAX_ENHANCE", 10)), "window": 60},
+        "minimax_login": {"limit": int(os.environ.get("RATE_LIMIT_AUTH_LOGIN", 10)), "window": 60},
+        "minimax_callback": {"limit": int(os.environ.get("RATE_LIMIT_AUTH_CALLBACK", 20)), "window": 60},
+        "list_analyses": {"limit": int(os.environ.get("RATE_LIMIT_LIST_ANALYSES", 60)), "window": 60},
+        "get_analysis": {"limit": int(os.environ.get("RATE_LIMIT_GET_ANALYSIS", 120)), "window": 60},
+        "get_job": {"limit": int(os.environ.get("RATE_LIMIT_GET_JOB", 120)), "window": 60},
+        "minimax_status": {"limit": int(os.environ.get("RATE_LIMIT_AUTH_STATUS", 60)), "window": 60},
+    }
 
     MINIMAX_CLIENT_ID = os.environ.get("MINIMAX_CLIENT_ID", "")
     MINIMAX_CLIENT_SECRET = os.environ.get("MINIMAX_CLIENT_SECRET", "")
