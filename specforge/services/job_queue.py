@@ -9,6 +9,7 @@ from ..repositories.job_repository import (
     mark_job_failed,
 )
 from .analysis_store import persist_analysis
+from .observability import record_job_metric
 from .prd import generate_prd
 
 
@@ -25,6 +26,7 @@ def fetch_job(job_id, workspace_id):
 
 
 def process_job(job):
+    started_at = time.perf_counter()
     result = generate_prd(job.requirements_text, job.ai_enhance_requested, job.ai_provider or "minimax")
     result = persist_analysis(
         job.requirements_text,
@@ -35,6 +37,8 @@ def process_job(job):
         request_id=job.request_id,
     )
     updated_job = mark_job_completed(job, result["analysis_id"], result)
+    duration_ms = round((time.perf_counter() - started_at) * 1000, 2)
+    record_job_metric("completed", duration_ms=duration_ms, job_id=job.id, analysis_id=result["analysis_id"])
     return job_to_payload(updated_job)
 
 
@@ -46,6 +50,7 @@ def process_next_job():
         return process_job(job)
     except Exception as error:
         mark_job_failed(job, str(error))
+        record_job_metric("failed", job_id=job.id)
         raise
 
 
