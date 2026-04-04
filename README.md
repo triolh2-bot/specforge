@@ -167,8 +167,11 @@ Security baseline material lives in:
 - `SECURITY.md`
 - `docs/security-baseline.md`
 - `docs/deployment.md`
-- `docs/operations.md`
+- `docs/operations-monitoring.md`
+- `docs/ci-cd.md`
+- `.github/workflows/ci.yml`
 - `.github/workflows/security.yml`
+- `.github/workflows/release.yml`
 - `scripts/security_check.sh`
 
 Local security checks can be run with:
