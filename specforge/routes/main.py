@@ -2,6 +2,7 @@ from flask import Blueprint, current_app, g, render_template
 
 from ..contracts import HealthResponse
 from ..http import json_response
+from ..services.auth_session import ensure_workspace_context
 from ..services.analysis_store import persist_analysis
 from ..services.job_queue import enqueue_analysis_job
 from ..services.prd import generate_prd
@@ -18,11 +19,13 @@ def index():
 @main_bp.route("/analyze", methods=["POST"])
 def analyze():
     data = validate_analyze_request()
+    workspace = ensure_workspace_context()
     if data["ai_enhance"]:
         job = enqueue_analysis_job(
             data["requirements"],
             data["ai_enhance"],
             data["ai_provider"],
+            workspace_id=workspace["workspace_id"],
             request_id=getattr(g, "request_id", None),
         )
         return json_response(
@@ -31,6 +34,7 @@ def analyze():
                 "job_id": job["job_id"],
                 "status": job["status"],
                 "queued": True,
+                "workspace_id": workspace["workspace_id"],
             },
             status=202,
         )
@@ -41,6 +45,7 @@ def analyze():
         data["ai_enhance"],
         data["ai_provider"],
         result,
+        workspace_id=workspace["workspace_id"],
         request_id=getattr(g, "request_id", None),
     )
     return json_response(result)

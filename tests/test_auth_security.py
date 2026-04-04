@@ -7,7 +7,12 @@ from flask import session
 from specforge import create_app
 from specforge.extensions import db
 from specforge.repositories.auth_repository import get_auth_session_credential
-from specforge.services.auth_session import get_or_create_auth_session_id, get_valid_minimax_access_token, store_minimax_tokens
+from specforge.services.auth_session import (
+    ensure_workspace_context,
+    get_or_create_auth_session_id,
+    get_valid_minimax_access_token,
+    store_minimax_tokens,
+)
 
 
 class TestConfig:
@@ -52,6 +57,7 @@ class AuthSecurityTests(unittest.TestCase):
 
     def test_tokens_are_stored_encrypted_and_can_be_loaded(self):
         with self.app.test_request_context("/"):
+            ensure_workspace_context()
             auth_session_id = get_or_create_auth_session_id()
             store_minimax_tokens("access-token-plain", refresh_token="refresh-token-plain", expires_in=3600)
             credential = get_auth_session_credential(auth_session_id)
@@ -61,27 +67,32 @@ class AuthSecurityTests(unittest.TestCase):
             self.assertEqual(get_valid_minimax_access_token(), "access-token-plain")
 
     def test_logout_clears_server_side_credentials(self):
+        with self.app.test_request_context("/"):
+            session["auth_session_id"] = "session-123"
+            ensure_workspace_context()
+            store_minimax_tokens("access-token-plain", refresh_token="refresh-token-plain", expires_in=3600)
+
         with self.client.session_transaction() as client_session:
             client_session["auth_session_id"] = "session-123"
             client_session["minimax_authenticated"] = True
-
-        with self.app.test_request_context("/"):
-            session["auth_session_id"] = "session-123"
-            store_minimax_tokens("access-token-plain", refresh_token="refresh-token-plain", expires_in=3600)
 
         response = self.client.get("/auth/logout", follow_redirects=False)
         self.assertEqual(response.status_code, 302)
 
         with self.app.app_context():
-            self.assertIsNone(get_auth_session_credential("session-123"))
+            credential = get_auth_session_credential("session-123")
+            self.assertIsNotNone(credential)
+            self.assertIsNone(credential.encrypted_access_token)
+            self.assertIsNone(credential.encrypted_refresh_token)
 
     def test_auth_status_uses_server_side_credentials(self):
-        with self.client.session_transaction() as client_session:
-            client_session["auth_session_id"] = "session-abc"
-
         with self.app.test_request_context("/"):
             session["auth_session_id"] = "session-abc"
+            ensure_workspace_context()
             store_minimax_tokens("access-token-plain", refresh_token="refresh-token-plain", expires_in=3600)
+
+        with self.client.session_transaction() as client_session:
+            client_session["auth_session_id"] = "session-abc"
 
         response = self.client.get("/auth/status")
         body = response.get_json()
@@ -89,6 +100,8 @@ class AuthSecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(body["authenticated"])
         self.assertGreater(body["token_expires_in"], 0)
+        self.assertIn("workspace_id", body)
+        self.assertEqual(body["role"], "owner")
 
 
 if __name__ == "__main__":
