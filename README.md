@@ -63,6 +63,14 @@ python app.py
 
 Then open: **http://localhost:5000**
 
+### Docker
+
+```bash
+docker compose up --build
+```
+
+The web UI runs on `http://localhost:5000` and the worker runs in a separate container.
+
 ## 💻 Usage
 
 ### 1. Enter Requirements
@@ -148,6 +156,7 @@ export OPENAI_API_KEY=your_key_here  # For AI enhancement
 Security baseline material lives in:
 - `SECURITY.md`
 - `docs/security-baseline.md`
+- `docs/deployment.md`
 - `docs/operations.md`
 - `.github/workflows/security.yml`
 - `scripts/security_check.sh`
