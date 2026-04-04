@@ -1,40 +1,36 @@
-# Deployment
+# SpecForge Deployment Guide
 
-## Reference Runtime
+## Process Model
 
-Use a two-process container model:
+Use one container image and run it in two roles:
+- `web`: `gunicorn --bind 0.0.0.0:5000 --workers 2 --threads 4 app:app`
+- `worker`: `python -m specforge.worker`
 
-- `web` runs `gunicorn app:app` and serves HTTP traffic.
-- `worker` runs `python -m specforge.worker` and processes queued analysis jobs.
-- `db` is a managed PostgreSQL instance in production; the compose file is a local stand-in.
+Both roles share the same image and connect to the same Postgres database.
 
-## Infrastructure Layout
+## Local Provisioning
 
-- Terminate TLS at a load balancer or ingress controller.
-- Route public traffic only to the web process.
-- Keep the worker private on the internal network.
-- Store persistent state in PostgreSQL and, when exports are added, durable object storage.
-- Keep environment promotion explicit: dev, staging, and production should have separate secrets and databases.
+1. Copy `.env.example` to `.env` and replace the placeholder secrets.
+2. Start the stack with `docker compose up --build`.
+3. Wait for `postgres` and `web` health checks to pass.
+4. Open `http://localhost:5000`.
 
-## Runtime Configuration
+## Services
 
-- Set `DATABASE_URL` to a PostgreSQL DSN.
-- Set `SECRET_KEY` and `TOKEN_ENCRYPTION_SECRET` to long random values.
-- Configure `MINIMAX_CLIENT_ID`, `MINIMAX_CLIENT_SECRET`, `MINIMAX_REDIRECT_URI`, or `MINIMAX_API_KEY` as required.
-- Set `APP_VERSION` so health checks report the deployed release.
+- `postgres` provides persistent storage for analyses, jobs, auth credentials, and workspaces.
+- `web` serves HTTP traffic and runs readiness/liveness probes.
+- `worker` drains queued AI analysis jobs out of band from the web process.
 
-## Local Development
+## Staging and Production
 
-```bash
-docker compose up --build
-```
+Use the same image in both environments and vary only:
+- `DATABASE_URL`
+- secrets such as `SECRET_KEY` and `TOKEN_ENCRYPTION_SECRET`
+- public MiniMax credentials
+- ingress and TLS configuration outside the container
 
-The web UI is available on `http://localhost:5000`.
+## Promotion Rules
 
-## Production Checklist
-
-1. Confirm the database migration path is applied before traffic is routed.
-2. Confirm `/health/live` and `/health/ready` both pass from inside the cluster.
-3. Confirm the worker is running and queue backlog remains below the warning threshold.
-4. Confirm structured logs and metrics are shipping to the observability backend.
-5. Confirm secrets are injected by the platform, not stored in the image.
+- Build once and promote the same image digest from staging to production.
+- Do not use SQLite outside local development.
+- Keep at least one worker process deployed anywhere the web tier can enqueue jobs.

@@ -63,6 +63,15 @@ python app.py
 
 Then open: **http://localhost:5000**
 
+### Containerized Startup
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+The compose stack starts `postgres`, `web`, and `worker`. Deployment details live in `docs/deployment.md`.
+
 ### Docker
 
 ```bash
