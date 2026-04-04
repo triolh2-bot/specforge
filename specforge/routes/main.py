@@ -67,6 +67,8 @@ def health():
             "PRD generation",
             "MiniMax OAuth authentication",
             "MiniMax API integration",
+            "Structured logging",
+            "Metrics endpoint",
         ],
         "ai_providers": {
             "minimax": {

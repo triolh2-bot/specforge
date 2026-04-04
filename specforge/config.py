@@ -21,6 +21,7 @@ class Config:
     SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "False").lower() == "true"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=int(os.environ.get("SESSION_LIFETIME_HOURS", 12)))
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
     RATE_LIMITS = {
         "analyze": {"limit": int(os.environ.get("RATE_LIMIT_ANALYZE", 20)), "window": 60},
         "minimax_chat": {"limit": int(os.environ.get("RATE_LIMIT_MINIMAX_CHAT", 10)), "window": 60},
