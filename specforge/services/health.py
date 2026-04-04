@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
+import time
 
+from flask import current_app
 from sqlalchemy import text
 
 from ..extensions import db
@@ -10,6 +13,14 @@ from ..models import AnalysisJob
 
 def utcnow():
     return datetime.now(timezone.utc)
+
+
+def ensure_aware(value):
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=timezone.utc)
 
 
 def check_database():
@@ -27,7 +38,40 @@ def check_database():
         }
 
 
-def check_job_queue(backlog_warning_threshold=100, backlog_critical_threshold=500):
+def check_migrations(config):
+    migrations_dir = Path(config.get("MIGRATIONS_DIR", ""))
+    expected = len(list(migrations_dir.glob("*.sql"))) if migrations_dir.exists() else 0
+    try:
+        applied = db.session.execute(text("SELECT COUNT(*) FROM schema_migrations")).scalar_one()
+    except Exception as exc:  # pragma: no cover - exercised via readiness failure test
+        db.session.rollback()
+        return {
+            "name": "migrations",
+            "status": "down",
+            "required": True,
+            "message": "Migration metadata is not readable",
+            "details": {"error": str(exc), "expected": expected, "applied": 0},
+        }
+
+    if applied < expected:
+        return {
+            "name": "migrations",
+            "status": "down",
+            "required": True,
+            "message": "Database schema is behind the checked-in migrations",
+            "details": {"expected": expected, "applied": applied},
+        }
+
+    return {
+        "name": "migrations",
+        "status": "ok",
+        "required": True,
+        "message": "Database schema matches checked-in migrations",
+        "details": {"expected": expected, "applied": applied},
+    }
+
+
+def check_job_queue(backlog_warning_threshold=100, backlog_critical_threshold=500, failed_jobs_critical_threshold=25):
     try:
         queued_jobs = AnalysisJob.query.filter_by(status="queued").count()
         running_jobs = AnalysisJob.query.filter_by(status="running").count()
@@ -45,13 +89,13 @@ def check_job_queue(backlog_warning_threshold=100, backlog_critical_threshold=50
 
     oldest_job_age_seconds = None
     if oldest_job and oldest_job.created_at:
-        oldest_job_age_seconds = int((utcnow() - oldest_job.created_at).total_seconds())
+        oldest_job_age_seconds = int((utcnow() - ensure_aware(oldest_job.created_at)).total_seconds())
 
     status = "ok"
     message = "Job queue is healthy"
-    if queued_jobs >= backlog_critical_threshold:
+    if queued_jobs >= backlog_critical_threshold or failed_jobs >= failed_jobs_critical_threshold:
         status = "down"
-        message = "Job queue backlog is critical"
+        message = "Job queue requires operator action"
     elif queued_jobs >= backlog_warning_threshold:
         status = "degraded"
         message = "Job queue backlog is elevated"
@@ -68,6 +112,7 @@ def check_job_queue(backlog_warning_threshold=100, backlog_critical_threshold=50
             "oldest_queued_job_age_seconds": oldest_job_age_seconds,
             "warning_threshold": backlog_warning_threshold,
             "critical_threshold": backlog_critical_threshold,
+            "failed_jobs_critical_threshold": failed_jobs_critical_threshold,
         },
     }
 
@@ -118,9 +163,11 @@ def summarize_health(checks):
 
 
 def build_liveness_report(config):
+    started_at = current_app.extensions.get("started_at", time.time())
     return {
         "status": "alive",
         "version": config.get("HEALTH_LIVENESS_VERSION", "2.0.0"),
+        "uptime_seconds": round(max(0.0, time.time() - started_at), 3),
         "checks": [
             {"name": "process", "status": "ok", "required": True},
         ],
@@ -129,12 +176,14 @@ def build_liveness_report(config):
 
 def build_readiness_report(config):
     database = check_database()
+    migrations = check_migrations(config)
     queue = check_job_queue(
         backlog_warning_threshold=config.get("HEALTH_QUEUE_BACKLOG_WARNING", 100),
         backlog_critical_threshold=config.get("HEALTH_QUEUE_BACKLOG_CRITICAL", 500),
+        failed_jobs_critical_threshold=config.get("HEALTH_FAILED_JOBS_CRITICAL", 25),
     )
     provider = check_minimax_provider_configuration(config)
-    checks = [database, queue, provider]
+    checks = [database, migrations, queue, provider]
     status = summarize_health(checks)
     ready = status != "down"
     return {
@@ -144,6 +193,7 @@ def build_readiness_report(config):
         "checks": checks,
         "summary": {
             "database": database["status"],
+            "migrations": migrations["status"],
             "queue": queue["status"],
             "provider": provider["status"],
         },

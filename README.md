@@ -112,6 +112,7 @@ Generate professional PRD documents for:
 | `/health/live` | GET | Liveness check |
 | `/health/ready` | GET | Readiness check |
 | `/health` | GET | Compatibility health summary |
+| `/metrics` | GET | Metrics snapshot |
 
 ### API Example
 
