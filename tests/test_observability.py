@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from specforge import create_app
 from specforge.extensions import db
@@ -60,6 +61,42 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual(body["status"], "ok")
         self.assertIn("counters", body)
         self.assertGreaterEqual(body["counters"]["http_requests_total"], 2)
+
+    def test_health_endpoints_report_live_and_ready_state(self):
+        live_response = self.client.get("/health/live")
+        ready_response = self.client.get("/health/ready")
+        compatibility_response = self.client.get("/health")
+
+        live_body = live_response.get_json()
+        ready_body = ready_response.get_json()
+        compatibility_body = compatibility_response.get_json()
+
+        self.assertEqual(live_response.status_code, 200)
+        self.assertEqual(live_body["status"], "alive")
+        self.assertEqual(live_body["endpoint"], "/health/live")
+        self.assertTrue(any(check["name"] == "process" for check in live_body["checks"]))
+
+        self.assertEqual(ready_response.status_code, 200)
+        self.assertEqual(ready_body["status"], "ok")
+        self.assertTrue(ready_body["ready"])
+        self.assertEqual(ready_body["summary"]["database"], "ok")
+        self.assertEqual(ready_body["summary"]["queue"], "ok")
+        self.assertEqual(ready_body["summary"]["provider"], "degraded")
+
+        self.assertEqual(compatibility_response.status_code, 200)
+        self.assertEqual(compatibility_body["endpoint"], "/health")
+        self.assertEqual(compatibility_body["mode"], "compatibility")
+
+    def test_readiness_returns_503_when_database_check_fails(self):
+        with patch("specforge.services.health.check_database", return_value={"name": "database", "status": "down", "required": True}):
+            response = self.client.get("/health/ready")
+
+        body = response.get_json()
+
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(body["ready"])
+        self.assertEqual(body["status"], "down")
+        self.assertEqual(body["summary"]["database"], "down")
 
     def test_request_logging_is_structured_json(self):
         stream = io.StringIO()

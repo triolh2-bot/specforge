@@ -28,9 +28,20 @@ class MiniMaxEnhanceRequest(TypedDict):
     requirements: str
 
 
+class HealthCheck(TypedDict, total=False):
+    name: str
+    status: str
+    required: bool
+    message: str
+    details: dict[str, Any]
+
+
 class HealthResponse(TypedDict, total=False):
     status: str
     version: str
-    features: list[str]
-    ai_providers: dict[str, Any]
+    ready: bool
+    endpoint: str
+    mode: str
+    summary: dict[str, str]
+    checks: list[HealthCheck]
     request_id: str

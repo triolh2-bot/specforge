@@ -33,6 +33,9 @@ class Config:
         "get_job": {"limit": int(os.environ.get("RATE_LIMIT_GET_JOB", 120)), "window": 60},
         "minimax_status": {"limit": int(os.environ.get("RATE_LIMIT_AUTH_STATUS", 60)), "window": 60},
     }
+    HEALTH_QUEUE_BACKLOG_WARNING = int(os.environ.get("HEALTH_QUEUE_BACKLOG_WARNING", 100))
+    HEALTH_QUEUE_BACKLOG_CRITICAL = int(os.environ.get("HEALTH_QUEUE_BACKLOG_CRITICAL", 500))
+    HEALTH_LIVENESS_VERSION = os.environ.get("APP_VERSION", "2.0.0")
 
     MINIMAX_CLIENT_ID = os.environ.get("MINIMAX_CLIENT_ID", "")
     MINIMAX_CLIENT_SECRET = os.environ.get("MINIMAX_CLIENT_SECRET", "")

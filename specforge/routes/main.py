@@ -1,10 +1,10 @@
 from flask import Blueprint, current_app, g, render_template
 
-from ..contracts import HealthResponse
 from ..http import json_response
 from ..services.auth_session import ensure_workspace_context
 from ..services.abuse import rate_limit
 from ..services.analysis_store import persist_analysis
+from ..services.health import build_liveness_report, build_readiness_report
 from ..services.job_queue import enqueue_analysis_job
 from ..services.prd import generate_prd
 from ..validation import validate_analyze_request
@@ -55,26 +55,23 @@ def analyze():
 
 @main_bp.route("/health", methods=["GET"])
 def health():
-    payload: HealthResponse = {
-        "status": "healthy",
-        "version": "2.0.0",
-        "features": [
-            "Domain detection",
-            "Negative scope detection",
-            "RMS calculation",
-            "Clarification questions",
-            "Conflict detection",
-            "PRD generation",
-            "MiniMax OAuth authentication",
-            "MiniMax API integration",
-            "Structured logging",
-            "Metrics endpoint",
-        ],
-        "ai_providers": {
-            "minimax": {
-                "oauth_configured": bool(current_app.config["MINIMAX_CLIENT_ID"]),
-                "api_key_configured": bool(current_app.config["MINIMAX_API_KEY"]),
-            }
-        }
-    }
+    payload = build_readiness_report(current_app.config)
+    payload["endpoint"] = "/health"
+    payload["mode"] = "compatibility"
+    status_code = 200 if payload["ready"] else 503
+    return json_response(payload, status=status_code)
+
+
+@main_bp.route("/health/live", methods=["GET"])
+def health_live():
+    payload = build_liveness_report(current_app.config)
+    payload["endpoint"] = "/health/live"
     return json_response(payload)
+
+
+@main_bp.route("/health/ready", methods=["GET"])
+def health_ready():
+    payload = build_readiness_report(current_app.config)
+    payload["endpoint"] = "/health/ready"
+    status_code = 200 if payload["ready"] else 503
+    return json_response(payload, status=status_code)
