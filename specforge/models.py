@@ -12,6 +12,7 @@ class AnalysisRecord(db.Model):
     __tablename__ = "analysis_records"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
     request_id = db.Column(db.String(64), nullable=True)
@@ -35,6 +36,7 @@ class AnalysisJob(db.Model):
     __tablename__ = "analysis_jobs"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
     started_at = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -57,6 +59,8 @@ class AuthSessionCredential(db.Model):
     __tablename__ = "auth_session_credentials"
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
+    role = db.Column(db.String(32), nullable=False, default="owner")
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
     auth_session_id = db.Column(db.String(64), nullable=False, unique=True, index=True)
@@ -64,3 +68,12 @@ class AuthSessionCredential(db.Model):
     encrypted_access_token = db.Column(db.Text, nullable=True)
     encrypted_refresh_token = db.Column(db.Text, nullable=True)
     token_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+
+class Workspace(db.Model):
+    __tablename__ = "workspaces"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+    name = db.Column(db.String(128), nullable=False)

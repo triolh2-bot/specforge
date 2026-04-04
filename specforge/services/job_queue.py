@@ -12,13 +12,13 @@ from .analysis_store import persist_analysis
 from .prd import generate_prd
 
 
-def enqueue_analysis_job(requirements, ai_enhance, ai_provider, request_id=None):
-    job = create_job(requirements, ai_enhance, ai_provider, request_id=request_id)
+def enqueue_analysis_job(requirements, ai_enhance, ai_provider, workspace_id, request_id=None):
+    job = create_job(requirements, ai_enhance, ai_provider, workspace_id=workspace_id, request_id=request_id)
     return job_to_payload(job)
 
 
-def fetch_job(job_id):
-    job = get_job(job_id)
+def fetch_job(job_id, workspace_id):
+    job = get_job(job_id, workspace_id=workspace_id)
     if not job:
         return None
     return job_to_payload(job)
@@ -31,6 +31,7 @@ def process_job(job):
         job.ai_enhance_requested,
         job.ai_provider or "minimax",
         result,
+        workspace_id=job.workspace_id,
         request_id=job.request_id,
     )
     updated_job = mark_job_completed(job, result["analysis_id"], result)

@@ -16,8 +16,9 @@ def _deserialize(value, default=None):
     return json.loads(value)
 
 
-def create_job(requirements, ai_enhance, ai_provider, request_id=None, max_attempts=3):
+def create_job(requirements, ai_enhance, ai_provider, workspace_id, request_id=None, max_attempts=3):
     job = AnalysisJob(
+        workspace_id=workspace_id,
         request_id=request_id,
         requirements_text=requirements,
         ai_enhance_requested=ai_enhance,
@@ -30,8 +31,11 @@ def create_job(requirements, ai_enhance, ai_provider, request_id=None, max_attem
     return job
 
 
-def get_job(job_id):
-    return db.session.get(AnalysisJob, job_id)
+def get_job(job_id, workspace_id=None):
+    query = AnalysisJob.query.filter_by(id=job_id)
+    if workspace_id is not None:
+        query = query.filter_by(workspace_id=workspace_id)
+    return query.one_or_none()
 
 
 def claim_next_queued_job():
@@ -79,6 +83,7 @@ def mark_job_failed(job, error_message):
 def job_to_payload(job):
     return {
         "job_id": job.id,
+        "workspace_id": job.workspace_id,
         "status": job.status,
         "request_id": job.request_id,
         "analysis_id": job.analysis_id,

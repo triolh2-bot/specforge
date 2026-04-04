@@ -1,7 +1,12 @@
 from flask import Blueprint, current_app, redirect, request, session, url_for
 
 from ..http import error_response, json_response
-from ..services.auth_session import clear_minimax_tokens, get_minimax_auth_status, rotate_auth_session, store_minimax_tokens
+from ..services.auth_session import (
+    clear_minimax_tokens,
+    get_minimax_auth_status,
+    rotate_auth_session,
+    store_minimax_tokens,
+)
 from ..services.minimax import exchange_code_for_token, get_minimax_auth_url
 
 auth_bp = Blueprint("auth", __name__)
@@ -57,6 +62,8 @@ def auth_status():
             "authenticated": auth_state["authenticated"],
             "provider": "minimax" if auth_state["authenticated"] else None,
             "token_expires_in": auth_state["token_expires_in"],
+            "workspace_id": auth_state["workspace_id"],
+            "role": auth_state["role"],
         }
     )
 
