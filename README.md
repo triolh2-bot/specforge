@@ -141,6 +141,21 @@ export PORT=5000
 export OPENAI_API_KEY=your_key_here  # For AI enhancement
 ```
 
+## Security
+
+Security baseline material lives in:
+- `SECURITY.md`
+- `docs/security-baseline.md`
+- `.github/workflows/security.yml`
+- `scripts/security_check.sh`
+
+Local security checks can be run with:
+
+```bash
+pip install -r requirements-security.txt
+./scripts/security_check.sh
+```
+
 ## 🎯 Use Cases
 
 ### For Freelancers
