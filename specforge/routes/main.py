@@ -3,6 +3,7 @@ from flask import Blueprint, current_app, g, render_template
 from ..contracts import HealthResponse
 from ..http import json_response
 from ..services.auth_session import ensure_workspace_context
+from ..services.abuse import rate_limit
 from ..services.analysis_store import persist_analysis
 from ..services.job_queue import enqueue_analysis_job
 from ..services.prd import generate_prd
@@ -17,6 +18,7 @@ def index():
 
 
 @main_bp.route("/analyze", methods=["POST"])
+@rate_limit("analyze")
 def analyze():
     data = validate_analyze_request()
     workspace = ensure_workspace_context()

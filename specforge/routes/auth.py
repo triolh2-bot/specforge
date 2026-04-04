@@ -1,6 +1,7 @@
 from flask import Blueprint, current_app, redirect, request, session, url_for
 
 from ..http import error_response, json_response
+from ..services.abuse import rate_limit
 from ..services.auth_session import (
     clear_minimax_tokens,
     get_minimax_auth_status,
@@ -13,6 +14,7 @@ auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.route("/auth/minimax")
+@rate_limit("minimax_login")
 def minimax_login():
     if not current_app.config["MINIMAX_CLIENT_ID"]:
         return error_response(
@@ -27,6 +29,7 @@ def minimax_login():
 
 
 @auth_bp.route("/auth/minimax/callback")
+@rate_limit("minimax_callback")
 def minimax_callback():
     error = request.args.get("error")
     if error:
@@ -55,6 +58,7 @@ def minimax_callback():
 
 
 @auth_bp.route("/auth/status")
+@rate_limit("minimax_status")
 def auth_status():
     auth_state = get_minimax_auth_status()
     return json_response(
