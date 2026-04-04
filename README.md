@@ -101,7 +101,9 @@ Generate professional PRD documents for:
 |----------|--------|-------------|
 | `/` | GET | Main UI |
 | `/analyze` | POST | Analyze requirements |
-| `/health` | GET | Health check |
+| `/health/live` | GET | Liveness check |
+| `/health/ready` | GET | Readiness check |
+| `/health` | GET | Compatibility health summary |
 
 ### API Example
 
@@ -146,6 +148,7 @@ export OPENAI_API_KEY=your_key_here  # For AI enhancement
 Security baseline material lives in:
 - `SECURITY.md`
 - `docs/security-baseline.md`
+- `docs/operations.md`
 - `.github/workflows/security.yml`
 - `scripts/security_check.sh`
 
