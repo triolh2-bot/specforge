@@ -25,7 +25,7 @@ from ..services.paypal import (
     handle_paypal_webhook_event,
     verify_paypal_webhook_signature,
 )
-from ..services.rbac import PERM, require_permission
+from ..services.rbac import PERM, require_permission, require_role
 
 billing_bp = Blueprint("billing", __name__)
 
@@ -79,6 +79,7 @@ def list_plans():
 # ---------------------------------------------------------------------------
 
 @billing_bp.route("/api/billing/subscribe", methods=["POST"])
+@require_role("admin")
 def subscribe():
     """Initiate a PayPal subscription for the current workspace.
 
@@ -142,6 +143,7 @@ def paypal_cancel():
 
 
 @billing_bp.route("/api/billing/cancel", methods=["POST"])
+@require_role("admin")
 def cancel_subscription():
     """Cancel the current workspace subscription."""
     context = ensure_workspace_context()
