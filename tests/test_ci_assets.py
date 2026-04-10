@@ -2,7 +2,7 @@ from pathlib import Path
 import unittest
 
 
-REPO_ROOT = Path("/home/kali/.openclaw/workspace/specforge-mvp")
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class CiAssetTests(unittest.TestCase):

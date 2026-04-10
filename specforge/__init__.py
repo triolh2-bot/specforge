@@ -6,15 +6,24 @@ from flask import Flask, request
 from .config import Config
 from .extensions import db
 from .http import assign_request_id, attach_request_id, error_response
+from .routes.admin import admin_bp
+from .routes.analytics import analytics_bp
 from .routes.analyses import analyses_bp
 from .routes.api import api_bp
 from .routes.auth import auth_bp
+from .routes.billing import billing_bp
+from .routes.exports import exports_bp
 from .routes.jobs import jobs_bp
+from .routes.legal import legal_bp
 from .routes.main import main_bp
+from .routes.members import members_bp
 from .routes.metrics import metrics_bp
 from .services.abuse import assign_rate_limit_client_id, enforce_content_length
+from .services.ai_providers import register_builtin_providers, registry
 from .services.migrations import run_migrations
 from .services.observability import after_request_observer, before_request_observer, configure_logging
+from .services.prompt_manager import register_builtin_templates
+from .services.rbac import AuthorizationError
 from .validation import ValidationError
 
 
@@ -28,6 +37,11 @@ def create_app(config_class=Config):
     logger = logging.getLogger(__name__)
 
     db.init_app(app)
+    # Reset and re-register providers for each app instance (test isolation)
+    registry._providers.clear()
+    registry._fallback_order.clear()
+    register_builtin_providers()
+    register_builtin_templates()
     app.before_request(assign_request_id)
     app.before_request(before_request_observer)
     app.before_request(assign_rate_limit_client_id)
@@ -39,7 +53,13 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(analyses_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(analytics_bp)
+    app.register_blueprint(billing_bp)
+    app.register_blueprint(exports_bp)
     app.register_blueprint(jobs_bp)
+    app.register_blueprint(legal_bp)
+    app.register_blueprint(members_bp)
     app.register_blueprint(metrics_bp)
     run_migrations(app)
 
@@ -47,6 +67,19 @@ def create_app(config_class=Config):
 
 
 def register_error_handlers(app, logger):
+    @app.errorhandler(AuthorizationError)
+    def handle_authorization_error(error):
+        return error_response(
+            str(error),
+            status=403,
+            code="forbidden",
+            details={
+                "permission": error.permission,
+                "required_role": error.required_role,
+                "actual_role": error.actual_role,
+            },
+        )
+
     @app.errorhandler(ValidationError)
     def handle_validation_error(error):
         return error_response(

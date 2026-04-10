@@ -50,3 +50,21 @@ class Config:
     MINIMAX_GROUP_ID = os.environ.get("MINIMAX_GROUP_ID", "")
     MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
     MINIMAX_MODEL = "MiniMax-M2.5"
+
+    # Feature flags
+    AI_ENHANCEMENT_ENABLED = os.environ.get("AI_ENHANCEMENT_ENABLED", "true").lower() == "true"
+    MINIMAX_OAUTH_ENABLED = os.environ.get("MINIMAX_OAUTH_ENABLED", "false").lower() == "true"
+    EXPORT_SHARING_ENABLED = os.environ.get("EXPORT_SHARING_ENABLED", "true").lower() == "true"
+    ANALYTICS_ENABLED = os.environ.get("ANALYTICS_ENABLED", "true").lower() == "true"
+    QUOTA_ENFORCEMENT = os.environ.get("QUOTA_ENFORCEMENT", "strict")  # strict, soft, off
+
+    # PayPal billing configuration
+    PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+    PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+    PAYPAL_SANDBOX = os.environ.get("PAYPAL_SANDBOX", "true").lower() == "true"
+    PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
+    # Plan IDs (set after creating plans in PayPal dashboard or via setup script)
+    PAYPAL_PLAN_ID_PRO = os.environ.get("PAYPAL_PLAN_ID_PRO", "")
+    PAYPAL_PLAN_ID_ENTERPRISE = os.environ.get("PAYPAL_PLAN_ID_ENTERPRISE", "")
+    PAYPAL_PLAN_PRICE_PRO = os.environ.get("PAYPAL_PLAN_PRICE_PRO", "$19.99/month")
+    PAYPAL_PLAN_PRICE_ENTERPRISE = os.environ.get("PAYPAL_PLAN_PRICE_ENTERPRISE", "$99.99/month")
