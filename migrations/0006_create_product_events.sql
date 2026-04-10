@@ -1,4 +1,5 @@
 -- Migration 0006: Create product_events table for usage analytics
+-- Uses CURRENT_TIMESTAMP for cross-database compatibility (SQLite + PostgreSQL).
 
 CREATE TABLE IF NOT EXISTS product_events (
     id TEXT PRIMARY KEY,
@@ -8,7 +9,7 @@ CREATE TABLE IF NOT EXISTS product_events (
     category TEXT NOT NULL,
     name TEXT NOT NULL,
     properties_json TEXT,
-    occurred_at TIMESTAMP NOT NULL DEFAULT (datetime('now'))
+    occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_event_workspace ON product_events(workspace_id);
