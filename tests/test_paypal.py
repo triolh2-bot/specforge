@@ -154,7 +154,7 @@ class PayPalIntegrationTests(unittest.TestCase):
 
     def test_cancel_subscription(self):
         """Test subscription cancellation."""
-        with patch("specforge.routes.billing.cancel_subscription") as mock_cancel:
+        with patch("specforge.routes.billing.paypal_cancel_subscription") as mock_cancel:
             mock_cancel.return_value = True
 
             resp = self.client.post(
