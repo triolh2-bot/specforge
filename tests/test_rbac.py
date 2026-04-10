@@ -122,6 +122,14 @@ class TestRoleHierarchy(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestPermissionDecorator(unittest.TestCase):
+    def setUp(self):
+        # Mock _ensure_workspace_context to avoid DB calls in unit tests
+        self.ctx_patch = patch("specforge.services.rbac._ensure_workspace_context")
+        self.mock_ctx = self.ctx_patch.start()
+
+    def tearDown(self):
+        self.ctx_patch.stop()
+
     def test_require_permission_allows_authorized_role(self):
         @require_permission("read:analysis")
         def view_analysis():
