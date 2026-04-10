@@ -211,16 +211,18 @@ def cancel_subscription(workspace_id: str, reason: str = "Cancelled by user") ->
         )
         # PayPal returns 204 on success
         resp.raise_for_status()
+
+        # Only update local state after successful PayPal response
+        sub.status = "canceled"
+        sub.canceled_at = datetime.now(timezone.utc)
+        sub.plan = "free"
+        db.session.commit()
+        return True
+
     except Exception as exc:
         logger.error("PayPal subscription cancellation failed: %s", exc)
-        # Still update local status even if PayPal call fails
-        pass
-
-    sub.status = "canceled"
-    sub.canceled_at = datetime.now(timezone.utc)
-    sub.plan = "free"
-    db.session.commit()
-    return True
+        db.session.rollback()
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -257,6 +259,14 @@ def verify_paypal_webhook_signature() -> bool:
 
     # Production mode: verify HMAC signature using PayPal's certificate
     try:
+        # Validate certificate URL to prevent SSRF
+        from urllib.parse import urlparse
+        parsed_url = urlparse(cert_url)
+        allowed_hosts = {"api-m.paypal.com", "api.sandbox.paypal.com"}
+        if parsed_url.scheme != "https" or parsed_url.hostname not in allowed_hosts:
+            logger.error("PayPal webhook: invalid certificate URL scheme or host: %s", cert_url)
+            return False
+
         # Download the certificate from PayPal
         cert_resp = requests.get(cert_url, timeout=10)
         cert_resp.raise_for_status()

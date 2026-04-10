@@ -207,9 +207,14 @@ def require_permission(permission: str) -> Callable:
             try:
                 _ensure_workspace_context()
             except Exception as exc:
-                # Log the failure — the route handler may also catch it,
-                # but having both logs helps diagnose decorator-level issues.
+                # Fail closed: if context setup fails, deny access immediately.
                 logger.debug("Workspace context setup failed in RBAC decorator: %s", exc)
+                raise AuthorizationError(
+                    permission=permission,
+                    required_role=required_role,
+                    actual_role="anonymous",
+                    message="Failed to establish workspace context.",
+                ) from exc
 
             current_role = get_session_role()
             if current_role is None:
@@ -247,7 +252,14 @@ def require_role(minimum_role: str) -> Callable:
             try:
                 _ensure_workspace_context()
             except Exception as exc:
+                # Fail closed: if context setup fails, deny access immediately.
                 logger.debug("Workspace context setup failed in require_role decorator: %s", exc)
+                raise AuthorizationError(
+                    permission="role_check",
+                    required_role=minimum_role,
+                    actual_role="anonymous",
+                    message="Failed to establish workspace context.",
+                ) from exc
 
             current_role = get_session_role()
             if current_role is None:

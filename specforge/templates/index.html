@@ -420,6 +420,13 @@
         const $ = (sel) => document.querySelector(sel);
         const $$ = (sel) => document.querySelectorAll(sel);
 
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
         function show(el) { if (el) el.classList.remove('hidden'); }
         function hide(el) { if (el) el.classList.add('hidden'); }
 
@@ -667,7 +674,7 @@
             // Target users
             const usersEl = $('#target-users');
             usersEl.innerHTML = (data.implied_users || []).map(u =>
-                `<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">${u}</span>`
+                `<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">${escapeHtml(u)}</span>`
             ).join('');
 
             // Missing features
@@ -675,7 +682,7 @@
             missingEl.innerHTML = (data.missing_features || []).map(f =>
                 `<li class="flex items-start gap-2 text-sm text-gray-700 py-1.5">
                     <span class="w-1.5 h-1.5 bg-red-400 rounded-full mt-1.5 flex-shrink-0" aria-hidden="true"></span>
-                    ${f}
+                    ${escapeHtml(f)}
                 </li>`
             ).join('') || '<p class="text-sm text-gray-400">No significant gaps detected</p>';
 
@@ -684,7 +691,7 @@
             qEl.innerHTML = (data.clarification_questions || []).map((q, i) =>
                 `<li class="flex items-start gap-3 text-sm text-gray-700 py-1.5">
                     <span class="flex-shrink-0 w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-semibold" aria-hidden="true">${i + 1}</span>
-                    <span>${q}</span>
+                    <span>${escapeHtml(q)}</span>
                 </li>`
             ).join('') || '<p class="text-sm text-gray-400">No questions at this time</p>';
 
@@ -694,7 +701,7 @@
                 cEl.innerHTML = data.conflicts.map(c =>
                     `<div class="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
                         <svg class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>
-                        <span>${c}</span>
+                        <span>${escapeHtml(c)}</span>
                     </div>`
                 ).join('');
                 show($('[data-tab="conflicts"]'));
@@ -704,41 +711,46 @@
 
             // PRD Content
             const prd = data.prd || {};
+            const escTitle = escapeHtml(prd.title || 'Project Specification');
+            const escVersion = escapeHtml(prd.version || '1.0');
+            const escProjType = escapeHtml(prd.overview?.project_type || '');
+            const escSummary = escapeHtml(prd.overview?.summary || 'No summary available.');
+            
             let prdHTML = `
                 <div class="mb-6">
-                    <h4 class="font-semibold text-gray-900 text-base mb-1">${prd.title || 'Project Specification'}</h4>
-                    <p class="text-sm text-gray-500">Version ${prd.version || '1.0'} · ${prd.overview?.project_type || ''}</p>
+                    <h4 class="font-semibold text-gray-900 text-base mb-1">${escTitle}</h4>
+                    <p class="text-sm text-gray-500">Version ${escVersion} · ${escProjType}</p>
                 </div>
                 <div class="mb-5">
                     <h5 class="font-medium text-gray-900 text-sm mb-2">Summary</h5>
-                    <p class="text-sm text-gray-600 leading-relaxed">${prd.overview?.summary || 'No summary available.'}</p>
+                    <p class="text-sm text-gray-600 leading-relaxed">${escSummary}</p>
                 </div>
                 <div class="mb-5">
                     <h5 class="font-medium text-gray-900 text-sm mb-2">Scope</h5>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <p class="text-xs font-medium text-green-700 mb-1">In Scope</p>
-                            <ul class="text-sm text-gray-600 space-y-1">${(prd.scope?.in_scope || []).map(s => `<li class="flex items-start gap-1.5"><span class="text-green-500 mt-0.5">✓</span>${s}</li>`).join('')}</ul>
+                            <ul class="text-sm text-gray-600 space-y-1">${(prd.scope?.in_scope || []).map(s => `<li class="flex items-start gap-1.5"><span class="text-green-500 mt-0.5">✓</span>${escapeHtml(s)}</li>`).join('')}</ul>
                         </div>
                         <div>
                             <p class="text-xs font-medium text-red-700 mb-1">Out of Scope</p>
-                            <ul class="text-sm text-gray-600 space-y-1">${(prd.scope?.out_of_scope || []).map(s => `<li class="flex items-start gap-1.5"><span class="text-red-400 mt-0.5">—</span>${s}</li>`).join('')}</ul>
+                            <ul class="text-sm text-gray-600 space-y-1">${(prd.scope?.out_of_scope || []).map(s => `<li class="flex items-start gap-1.5"><span class="text-red-400 mt-0.5">—</span>${escapeHtml(s)}</li>`).join('')}</ul>
                         </div>
                     </div>
                 </div>
                 <div class="mb-5">
                     <h5 class="font-medium text-gray-900 text-sm mb-2">Functional Requirements</h5>
-                    <ol class="text-sm text-gray-600 space-y-1">${(prd.functional_requirements || []).map((r, i) => `<li><span class="text-gray-400 mr-1">${i + 1}.</span>${r}</li>`).join('')}</ol>
+                    <ol class="text-sm text-gray-600 space-y-1">${(prd.functional_requirements || []).map((r, i) => `<li><span class="text-gray-400 mr-1">${i + 1}.</span>${escapeHtml(r)}</li>`).join('')}</ol>
                 </div>
                 <div class="mb-5">
                     <h5 class="font-medium text-gray-900 text-sm mb-2">Non-Functional</h5>
                     <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
-                        ${Object.entries(prd.non_functional || {}).map(([k, v]) => `<div><dt class="font-medium text-gray-700 capitalize">${k}</dt><dd>${v}</dd></div>`).join('')}
+                        ${Object.entries(prd.non_functional || {}).map(([k, v]) => `<div><dt class="font-medium text-gray-700 capitalize">${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}
                     </dl>
                 </div>
                 <div class="mb-5">
                     <h5 class="font-medium text-gray-900 text-sm mb-2">Risks</h5>
-                    <ul class="text-sm text-gray-600 space-y-1">${(prd.risks || []).map(r => `<li class="flex items-start gap-1.5"><span class="text-amber-500">⚠</span>${r}</li>`).join('')}</ul>
+                    <ul class="text-sm text-gray-600 space-y-1">${(prd.risks || []).map(r => `<li class="flex items-start gap-1.5"><span class="text-amber-500">⚠</span>${escapeHtml(r)}</li>`).join('')}</ul>
                 </div>
             `;
 
@@ -746,14 +758,14 @@
                 prdHTML += `
                     <div class="mb-5">
                         <h5 class="font-medium text-gray-900 text-sm mb-1">Tech Stack</h5>
-                        <p class="text-sm text-gray-600">${prd.technical_constraints.tech_stack}</p>
+                        <p class="text-sm text-gray-600">${escapeHtml(prd.technical_constraints.tech_stack)}</p>
                     </div>`;
             }
             if (prd.technical_constraints?.timeline) {
                 prdHTML += `
                     <div>
                         <h5 class="font-medium text-gray-900 text-sm mb-1">Timeline</h5>
-                        <p class="text-sm text-gray-600">${prd.technical_constraints.timeline}</p>
+                        <p class="text-sm text-gray-600">${escapeHtml(prd.technical_constraints.timeline)}</p>
                     </div>`;
             }
 
@@ -768,13 +780,13 @@
 
                 let aiHTML = '';
                 if (aiData.tech_stack_recommendation) {
-                    aiHTML += `<div><h5 class="font-medium text-gray-900">Tech Stack</h5><p class="mt-1">${aiData.tech_stack_recommendation}</p></div>`;
+                    aiHTML += `<div><h5 class="font-medium text-gray-900">Tech Stack</h5><p class="mt-1">${escapeHtml(aiData.tech_stack_recommendation)}</p></div>`;
                 }
                 if (aiData.estimated_timeline) {
-                    aiHTML += `<div><h5 class="font-medium text-gray-900">Timeline</h5><p class="mt-1">${aiData.estimated_timeline}</p></div>`;
+                    aiHTML += `<div><h5 class="font-medium text-gray-900">Timeline</h5><p class="mt-1">${escapeHtml(aiData.estimated_timeline)}</p></div>`;
                 }
                 if (aiData.risk_factors?.length) {
-                    aiHTML += `<div><h5 class="font-medium text-gray-900">Risk Factors</h5><ul class="mt-1 space-y-1">${aiData.risk_factors.map(r => `<li class="flex items-start gap-1.5"><span class="text-amber-500">⚠</span>${r}</li>`).join('')}</ul></div>`;
+                    aiHTML += `<div><h5 class="font-medium text-gray-900">Risk Factors</h5><ul class="mt-1 space-y-1">${aiData.risk_factors.map(r => `<li class="flex items-start gap-1.5"><span class="text-amber-500">⚠</span>${escapeHtml(r)}</li>`).join('')}</ul></div>`;
                 }
                 $('#ai-result-content').innerHTML = aiHTML;
             } else {
@@ -812,9 +824,9 @@
                     <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition cursor-pointer" onclick="viewAnalysis('${item.analysis_id}')">
                         <div class="flex items-center justify-between">
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-900 truncate">${item.requirements_preview || 'Analysis'}</p>
+                                <p class="text-sm font-medium text-gray-900 truncate">${escapeHtml(item.requirements_preview || 'Analysis')}</p>
                                 <p class="text-xs text-gray-400 mt-1">
-                                    <span class="capitalize">${item.domain}</span> · RMS ${item.rms}/100 · ${new Date(item.created_at).toLocaleDateString()}
+                                    <span class="capitalize">${escapeHtml(item.domain)}</span> · RMS ${item.rms}/100 · ${new Date(item.created_at).toLocaleDateString()}
                                 </p>
                             </div>
                             <span class="text-xs px-2 py-1 rounded-full ${item.ai_enhance_requested ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500'}">
