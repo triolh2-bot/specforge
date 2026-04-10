@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 from datetime import datetime, timezone, timedelta
@@ -109,15 +110,25 @@ def generate_html_export(analysis: dict[str, Any]) -> tuple[str, str]:
     scope = prd.get("scope", {})
     constraints = prd.get("technical_constraints", {})
 
-    def _list_items(items):
-        return "".join(f"<li>{item}</li>" for item in items)
+    # Escape helper — use html.escape for XSS prevention
+    _esc = html.escape
 
-    html = f"""<!DOCTYPE html>
+    def _list_items(items):
+        return "".join(f"<li>{_esc(str(item))}</li>" for item in items)
+
+    title = _esc(prd.get("title", "Project Specification Document"))
+    version = _esc(prd.get("version", "1.0"))
+    domain = _esc(overview.get("project_type", "Unknown"))
+    rms = _esc(str(analysis.get("rms", "N/A")))
+    generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    summary = _esc(overview.get("summary", "No summary available."))
+
+    html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{prd.get('title', 'PRD')}</title>
+<title>{title}</title>
 <style>
 body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.6; color: #1a1a1a; }}
 h1 {{ border-bottom: 2px solid #2563eb; padding-bottom: 0.5rem; color: #1e3a5f; }}
@@ -134,69 +145,69 @@ footer {{ margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; co
 </style>
 </head>
 <body>
-<h1>{prd.get('title', 'Project Specification Document')}</h1>
+<h1>{title}</h1>
 <div class="meta">
-<strong>Version:</strong> {prd.get('version', '1.0')} &middot;
-<strong>Domain:</strong> {overview.get('project_type', 'Unknown')} &middot;
-<strong>RMS:</strong> <span class="rms">{analysis.get('rms', 'N/A')}/100</span> &middot;
-<strong>Generated:</strong> {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}
+<strong>Version:</strong> {version} &middot;
+<strong>Domain:</strong> {domain} &middot;
+<strong>RMS:</strong> <span class="rms">{rms}/100</span> &middot;
+<strong>Generated:</strong> {generated}
 </div>
 
 <h2>Overview</h2>
-<p>{overview.get('summary', 'No summary available.')}</p>
+<p>{summary}</p>
 
 <h2>Target Users</h2>
-<ul>{_list_items(analysis.get('implied_users', []))}</ul>
+<ul>{_list_items(analysis.get("implied_users", []))}</ul>
 
 <h2>Scope</h2>
 <h3>In Scope</h3>
-<ul class="in-scope">{_list_items(scope.get('in_scope', []))}</ul>
+<ul class="in-scope">{_list_items(scope.get("in_scope", []))}</ul>
 <h3>Out of Scope</h3>
-<ul class="out-scope">{_list_items(scope.get('out_of_scope', []))}</ul>
+<ul class="out-scope">{_list_items(scope.get("out_of_scope", []))}</ul>
 
 <h2>Functional Requirements</h2>
-<ol>{_list_items(prd.get('functional_requirements', []))}</ol>
+<ol>{_list_items(prd.get("functional_requirements", []))}</ol>
 
 <h2>Non-Functional Requirements</h2>
 <ul>
 """
     for key, value in prd.get("non_functional", {}).items():
-        html += f"<li><strong>{key.title()}:</strong> {value}</li>\n"
+        html_content += f"<li><strong>{_esc(key.title())}:</strong> {_esc(str(value))}</li>\n"
 
-    html += "</ul>\n"
+    html_content += "</ul>\n"
 
     if constraints.get("tech_stack"):
-        html += f"<h2>Technology Stack</h2>\n<p>{constraints['tech_stack']}</p>\n"
+        html_content += f"<h2>Technology Stack</h2>\n<p>{_esc(str(constraints['tech_stack']))}</p>\n"
     if constraints.get("timeline"):
-        html += f"<h2>Estimated Timeline</h2>\n<p>{constraints['timeline']}</p>\n"
+        html_content += f"<h2>Estimated Timeline</h2>\n<p>{_esc(str(constraints['timeline']))}</p>\n"
 
-    html += "<h2>Risks</h2>\n<ul>\n"
+    html_content += "<h2>Risks</h2>\n<ul>\n"
     for risk in prd.get("risks", []):
-        html += f"<li>{risk}</li>\n"
-    html += "</ul>\n"
+        html_content += f"<li>{_esc(str(risk))}</li>\n"
+    html_content += "</ul>\n"
 
-    html += "<h2>Clarification Questions</h2>\n"
+    html_content += "<h2>Clarification Questions</h2>\n"
     for q in analysis.get("clarification_questions", []):
-        html += f'<div class="question">{q}</div>\n'
+        html_content += f'<div class="question">{_esc(str(q))}</div>\n'
 
     if analysis.get("missing_features"):
-        html += "<h2>Missing Features</h2>\n<ul>\n"
+        html_content += "<h2>Missing Features</h2>\n<ul>\n"
         for f in analysis["missing_features"]:
-            html += f"<li>☐ {f}</li>\n"
-        html += "</ul>\n"
+            html_content += f"<li>☐ {_esc(str(f))}</li>\n"
+        html_content += "</ul>\n"
 
     if analysis.get("conflicts"):
-        html += "<h2>Conflicts &amp; Tensions</h2>\n"
+        html_content += "<h2>Conflicts &amp; Tensions</h2>\n"
         for c in analysis["conflicts"]:
-            html += f'<div class="conflict">⚠️ {c}</div>\n'
+            html_content += f'<div class="conflict">⚠️ {_esc(str(c))}</div>\n'
 
-    html += """
+    html_content += """
 <footer>Generated by SpecForge &middot; specforge.dev</footer>
 </body>
 </html>"""
 
     filename = f"prd-{analysis.get('domain', 'project')}-{datetime.now(timezone.utc).strftime('%Y%m%d')}.html"
-    return html, filename
+    return html_content, filename
 
 
 def generate_json_export(analysis: dict[str, Any]) -> tuple[str, str]:
