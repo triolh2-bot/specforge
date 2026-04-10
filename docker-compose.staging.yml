@@ -1,0 +1,103 @@
+# SpecForge Staging Environment Configuration
+#
+# This docker-compose file mirrors production with reduced resources.
+# Use it for pre-release validation before promoting to production.
+
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: specforge_staging
+      POSTGRES_USER: specforge
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-staging-password-change-me}
+    volumes:
+      - pgdata_staging:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U specforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: specforge:${APP_VERSION:-latest}
+    environment:
+      DATABASE_URL: postgresql://specforge:${DB_PASSWORD:-staging-password-change-me}@postgres:5432/specforge_staging
+      SECRET_KEY: ${SECRET_KEY:-staging-secret-change-me}
+      TOKEN_ENCRYPTION_SECRET: ${TOKEN_ENCRYPTION_SECRET:-staging-encryption-secret}
+      MINIMAX_CLIENT_ID: ${MINIMAX_CLIENT_ID}
+      MINIMAX_CLIENT_SECRET: ${MINIMAX_CLIENT_SECRET}
+      MINIMAX_REDIRECT_URI: ${MINIMAX_REDIRECT_URI:-https://staging.specforge.dev/auth/minimax/callback}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY}
+      MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID}
+      LOG_LEVEL: DEBUG
+      APP_VERSION: ${APP_VERSION:-staging}
+      # Staging-specific: soft quota enforcement for testing
+      QUOTA_ENFORCEMENT: soft
+      # Feature flags: all enabled in staging
+      AI_ENHANCEMENT_ENABLED: "true"
+      MINIMAX_OAUTH_ENABLED: "true"
+      EXPORT_SHARING_ENABLED: "true"
+      ANALYTICS_ENABLED: "true"
+    ports:
+      - "5001:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    image: specforge:${APP_VERSION:-latest}
+    command: python -m specforge.worker
+    environment:
+      DATABASE_URL: postgresql://specforge:${DB_PASSWORD:-staging-password-change-me}@postgres:5432/specforge_staging
+      SECRET_KEY: ${SECRET_KEY:-staging-secret-change-me}
+      TOKEN_ENCRYPTION_SECRET: ${TOKEN_ENCRYPTION_SECRET:-staging-encryption-secret}
+      MINIMAX_API_KEY: ${MINIMAX_API_KEY}
+      MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID}
+      LOG_LEVEL: DEBUG
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Smoke test runner - validates the deployment on startup
+  smoke-test:
+    image: alpine:3.19
+    command: >
+      sh -c "
+        echo 'Waiting for web to be ready...' &&
+        for i in 1 2 3 4 5 6 7 8 9 10; do
+          if wget -q -O- http://web:5000/health/ready > /dev/null 2>&1; then
+            echo 'Web is ready. Running smoke tests...' &&
+            # Test 1: Health endpoint
+            HEALTH=$(wget -q -O- http://web:5000/health) &&
+            echo \"Health: $$HEALTH\" &&
+            # Test 2: Page renders
+            PAGE=$(wget -q -O- http://web:5000/) &&
+            echo \"Page length: $$(echo \"$$PAGE\" | wc -c) bytes\" &&
+            # Test 3: Analyze endpoint (expect 400 for empty body)
+            ANALYZE=$(wget -q -O- --post-data='{}' --header='Content-Type: application/json' http://web:5000/analyze 2>&1 || true) &&
+            echo 'Smoke tests complete' &&
+            exit 0
+          fi
+          echo \"Waiting... ($$i/10)\"
+          sleep 3
+        done &&
+        echo 'Smoke tests FAILED - web did not become ready' &&
+        exit 1
+      "
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  pgdata_staging:

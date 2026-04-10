@@ -1,11 +1,14 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from specforge import create_app
 from specforge.extensions import db
 from specforge.services.job_queue import process_next_job
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestConfig:
@@ -29,7 +32,7 @@ class JobTests(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
         db_path = os.path.join(self.tempdir.name, "specforge-jobs.db")
-        migrations_dir = os.path.join("/home/kali/.openclaw/workspace/specforge-mvp", "migrations")
+        migrations_dir = str(REPO_ROOT / "migrations")
 
         class _Config(TestConfig):
             SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"

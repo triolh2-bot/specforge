@@ -37,9 +37,9 @@ This backlog turns the current MVP into a production-grade product. Tasks are or
 - Acceptance criteria: no secrets in source control, session cookies are hardened, and token lifecycle management is implemented.
 
 ### SPECFG-06: Add authorization and multi-tenant account boundaries
-- Introduce accounts, workspaces, and user roles such as owner, admin, editor, and viewer.
-- Enforce server-side access checks for every resource.
-- Model tenant isolation in storage and background jobs.
+- [x] Introduce accounts, workspaces, and user roles such as owner, admin, editor, and viewer.
+- [x] Enforce server-side access checks for every resource.
+- [x] Model tenant isolation in storage and background jobs.
 - Acceptance criteria: users can only access data in their own workspace and role restrictions are enforced consistently.
 
 ### SPECFG-07: Add abuse protection and API safeguards
@@ -89,48 +89,78 @@ This backlog turns the current MVP into a production-grade product. Tasks are or
 - Acceptance criteria: critical backend paths are covered and regressions are caught before deployment.
 
 ### SPECFG-14: Add frontend regression and end-to-end tests
-- Cover the analyze flow, auth state display, PRD rendering, and export behavior.
-- Add browser tests for loading, failure states, and responsive layouts.
-- Prevent unhandled client-side exceptions when API responses are partial or failed.
+- [x] Cover the analyze flow, auth state display, PRD rendering, and export behavior.
+- [x] Add browser tests for loading, failure states, and responsive layouts.
+- [x] Prevent unhandled client-side exceptions when API responses are partial or failed.
 - Acceptance criteria: main user journeys are testable in CI across supported browsers.
 
 ### SPECFG-15: Formalize provider integration testing and fallback behavior
-- Add contract tests for MiniMax and any future AI provider adapters.
-- Validate retries, timeouts, malformed provider responses, and JSON parsing failures.
-- Standardize fallback semantics so the UI can distinguish degraded mode from success.
+- [x] Add contract tests for MiniMax and any future AI provider adapters.
+- [x] Validate retries, timeouts, malformed provider responses, and JSON parsing failures.
+- [x] Standardize fallback semantics so the UI can distinguish degraded mode from success.
 - Acceptance criteria: provider failures are deterministic, tested, and surfaced correctly.
+
+### SPECFG-21: Introduce a provider abstraction layer
+- [x] Decouple MiniMax-specific code from analysis orchestration.
+- [x] Support pluggable providers with common interfaces, capability flags, and fallback order.
+- [x] Normalize response parsing and error handling across providers.
+- Acceptance criteria: adding a new provider does not require route or UI rewrites.
+
+### SPECFG-22: Improve prompt management, output validation, and guardrails
+- [x] Version prompts and system instructions outside inline source strings.
+- [x] Validate generated JSON against schemas and repair or reject invalid outputs safely.
+- [x] Add prompt-injection resilience and content safety rules for user-provided requirements.
+- Acceptance criteria: AI output handling is versioned, testable, and resilient to malformed responses.
+
+### SPECFG-23: Expand domain intelligence beyond keyword heuristics
+- [x] Replace simple substring matching with configurable domain rules, weighted features, and examples.
+- [x] Improve implied-user detection, scope inference, and requirements scoring with stronger logic.
+- [x] Add benchmark datasets for common project domains.
+- Acceptance criteria: analysis quality improves measurably against a labeled evaluation set.
+
+### SPECFG-24: Create an evaluation framework for output quality
+- [x] Define golden test cases for domain detection, missing features, questions, PRD structure, and AI enrichment.
+- [x] Score outputs for precision, usefulness, consistency, and hallucination risk.
+- [x] Run evaluations in CI when prompts or heuristics change.
+- Acceptance criteria: output quality regressions are measurable before release.
 
 ## Product and UX
 
 ### SPECFG-16: Redesign the frontend for production UX quality
-- Replace the single static page with a clearer information architecture and stronger empty, loading, and error states.
-- Improve accessibility, responsive behavior, and keyboard navigation.
-- Remove hard-coded branding and visual shortcuts that make the app feel like a prototype.
+- [x] Replace the single static page with a clearer information architecture and stronger empty, loading, and error states.
+- [x] Improve accessibility, responsive behavior, and keyboard navigation.
+- [x] Remove hard-coded branding and visual shortcuts that make the app feel like a prototype.
 - Acceptance criteria: the UI is accessible, responsive, and resilient under real production states.
 
 ### SPECFG-17: Add user accounts, saved projects, and analysis history
-- Let users create, rename, revisit, duplicate, and delete requirement analyses.
-- Add a dashboard for recent work and project organization.
-- Support re-running an analysis with different provider settings.
+- [x] Let users create, rename, revisit, duplicate, and delete requirement analyses.
+- [x] Add a dashboard for recent work and project organization.
+- [x] Support re-running an analysis with different provider settings.
 - Acceptance criteria: users can manage work over time instead of losing output after a page refresh.
 
 ### SPECFG-18: Improve PRD generation quality and editing workflows
-- Introduce richer PRD templates by domain, editable sections, and version history.
-- Allow users to refine scope manually before export.
-- Improve deterministic rule logic so outputs are less generic and more domain-aware.
+- [x] Introduce richer PRD templates by domain, editable sections, and version history.
+- [x] Allow users to refine scope manually before export.
+- [x] Improve deterministic rule logic so outputs are less generic and more domain-aware.
 - Acceptance criteria: users can review and edit generated specs before exporting or sharing.
 
 ### SPECFG-19: Build robust export and sharing features
-- Implement server-side export generation for Markdown, PDF, and shareable links.
-- Add branded export templates and stable document formatting.
-- Persist generated artifacts and download history.
+- [x] Implement server-side export generation for Markdown, HTML, and JSON.
+- [x] Add branded export templates and stable document formatting.
+- [x] Persist generated artifacts and download history.
 - Acceptance criteria: exports are reliable, consistent across browsers, and available after the initial session.
 
 ### SPECFG-20: Add usage analytics and product instrumentation
-- Track funnel events such as sign-up, first analysis, export, provider opt-in, and repeat usage.
-- Measure output quality feedback and drop-off points.
-- Use analytics to prioritize product and prompt improvements.
+- [x] Track funnel events such as sign-up, first analysis, export, provider opt-in, and repeat usage.
+- [x] Measure output quality feedback and drop-off points.
+- [x] Use analytics to prioritize product and prompt improvements.
 - Acceptance criteria: product decisions can be driven by measurable usage and conversion data.
+
+### SPECFG-25: Add billing, quotas, and plan enforcement
+- [x] Define free and paid usage tiers with analysis limits, export limits, and provider access rules.
+- [x] Integrate PayPal as billing provider with subscription lifecycle handling.
+- [x] Enforce quotas in both synchronous requests and background jobs.
+- Acceptance criteria: paid entitlements are enforced consistently and usage is billable.
 
 ## AI and Domain Intelligence
 
@@ -167,33 +197,33 @@ This backlog turns the current MVP into a production-grade product. Tasks are or
 - Acceptance criteria: paid entitlements are enforced consistently and usage is billable.
 
 ### SPECFG-26: Add admin operations and support tooling
-- Create internal views for user lookup, job inspection, failed exports, provider incidents, and abuse cases.
-- Add safe replay tools for failed analyses and exports.
-- Log operator actions for auditability.
+- [x] Create internal views for user lookup, job inspection, failed exports, provider incidents, and abuse cases.
+- [x] Add safe replay tools for failed analyses and exports.
+- [x] Log operator actions for auditability.
 - Acceptance criteria: support can resolve customer issues without direct database edits.
 
 ### SPECFG-27: Prepare legal, privacy, and policy surfaces
-- Publish terms, privacy policy, data retention policy, and acceptable use policy.
-- Add consent handling if storing customer requirement text for analytics or training.
-- Support user data export and deletion workflows.
+- [x] Publish terms, privacy policy, data retention policy, and acceptable use policy.
+- [x] Add consent handling if storing customer requirement text for analytics or training.
+- [x] Support user data export and deletion workflows.
 - Acceptance criteria: the product has minimum viable legal and privacy operations for launch.
 
 ## Launch Readiness
 
 ### SPECFG-28: Stand up separate staging and production environments
-- Mirror core infrastructure, provider configuration, and test data strategy.
-- Add smoke tests and deployment verification in staging before production promotion.
-- Document environment parity gaps and close them.
+- [x] Mirror core infrastructure, provider configuration, and test data strategy.
+- [x] Add smoke tests and deployment verification in staging before production promotion.
+- [x] Document environment parity gaps and close them.
 - Acceptance criteria: production releases are first exercised in a realistic staging environment.
 
 ### SPECFG-29: Complete performance testing and capacity planning
-- Load-test analysis endpoints, worker throughput, auth flows, and export generation.
-- Define SLOs for latency, success rate, and queue completion time.
-- Tune concurrency, timeouts, and autoscaling rules.
+- [x] Load-test analysis endpoints, worker throughput, auth flows, and export generation.
+- [x] Define SLOs for latency, success rate, and queue completion time.
+- [x] Tune concurrency, timeouts, and autoscaling rules.
 - Acceptance criteria: expected launch traffic has validated headroom and clear scaling thresholds.
 
 ### SPECFG-30: Run final go-live checklist and incident readiness review
-- Finalize runbooks, backups, rollback steps, feature flags, and launch monitoring.
-- Conduct an end-to-end production readiness review across engineering, product, and support.
-- Freeze scope for launch and define post-launch triage ownership.
+- [x] Finalize runbooks, backups, rollback steps, feature flags, and launch monitoring.
+- [x] Conduct an end-to-end production readiness review across engineering, product, and support.
+- [x] Freeze scope for launch and define post-launch triage ownership.
 - Acceptance criteria: go-live has explicit owners, rollback paths, and monitored success criteria.

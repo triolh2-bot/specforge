@@ -4,6 +4,7 @@ from ..http import error_response, json_response
 from ..services.abuse import rate_limit
 from ..services.auth_session import ensure_workspace_context
 from ..services.job_queue import fetch_job
+from ..services.rbac import PERM, enforce_resource_access
 
 jobs_bp = Blueprint("jobs", __name__)
 
@@ -12,6 +13,8 @@ jobs_bp = Blueprint("jobs", __name__)
 @rate_limit("get_job")
 def get_job(job_id):
     workspace = ensure_workspace_context()
+    enforce_resource_access(workspace["workspace_id"], PERM.READ_JOBS.name)
+
     payload = fetch_job(job_id, workspace["workspace_id"])
     if not payload:
         return error_response("Job not found", status=404, code="job_not_found")
