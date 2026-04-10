@@ -1,11 +1,12 @@
 -- Migration 0005: Create export_records and share_links tables
+-- Uses CURRENT_TIMESTAMP for cross-database compatibility (SQLite + PostgreSQL).
 
 CREATE TABLE IF NOT EXISTS export_records (
     id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
     analysis_id TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
-    updated_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     export_format TEXT NOT NULL,
     content TEXT NOT NULL,
     filename TEXT NOT NULL,
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS share_links (
     id TEXT PRIMARY KEY,
     workspace_id TEXT NOT NULL,
     analysis_id TEXT NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT (datetime('now')),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP,
     token TEXT NOT NULL UNIQUE,
     access_level TEXT NOT NULL DEFAULT 'view',
