@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from ..extensions import db
 from ..models import Workspace, WorkspaceSubscription
 
@@ -18,13 +20,29 @@ def get_workspace_subscription(workspace_id):
 
 
 def upsert_workspace_subscription(workspace_id, plan, provider=None, provider_subscription_id=None, status="active"):
-    sub = get_workspace_subscription(workspace_id)
-    if sub is None:
-        sub = WorkspaceSubscription(workspace_id=workspace_id)
-        db.session.add(sub)
-    sub.plan = plan
-    sub.provider = provider
-    sub.provider_subscription_id = provider_subscription_id
-    sub.status = status
-    db.session.commit()
-    return sub
+    """Atomically insert or update a workspace subscription.
+
+    Uses a retry loop to handle race conditions where two concurrent requests
+    try to insert the same workspace_id simultaneously. The unique constraint
+    on workspace_id ensures only one succeeds; the other retries and updates.
+    """
+    for attempt in range(3):
+        sub = get_workspace_subscription(workspace_id)
+        if sub is None:
+            sub = WorkspaceSubscription(workspace_id=workspace_id)
+            db.session.add(sub)
+
+        sub.plan = plan
+        sub.provider = provider
+        sub.provider_subscription_id = provider_subscription_id
+        sub.status = status
+
+        try:
+            db.session.commit()
+            return sub
+        except IntegrityError:
+            # Another transaction inserted the row first — rollback and retry
+            db.session.rollback()
+            if attempt == 2:
+                raise  # Give up after 3 attempts
+
