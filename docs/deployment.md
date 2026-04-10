@@ -37,6 +37,9 @@ curl -f https://specforge.dev/health/ready
 
 ```yaml
 # k8s/deployment.yaml
+#
+# NOTE: Replace ${APP_VERSION} with a concrete image tag before applying.
+# Example: APP_VERSION=1.2.3 envsubst < k8s/deployment.yaml | kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -47,6 +50,9 @@ spec:
     matchLabels:
       app: specforge-web
   template:
+    metadata:
+      labels:
+        app: specforge-web
     spec:
       containers:
       - name: web
