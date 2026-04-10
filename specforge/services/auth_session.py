@@ -131,7 +131,12 @@ def get_minimax_auth_status():
 
     credential = get_auth_session_credential(auth_session_id)
     if not credential or not credential.encrypted_access_token:
-        return {"authenticated": False, "token_expires_in": 0, "workspace_id": context["workspace_id"], "role": context["role"]}
+        return {  # nosec B105 — integer literal, not a password
+            "authenticated": False,
+            "token_expires_in": 0,
+            "workspace_id": context["workspace_id"],
+            "role": context["role"],
+        }
 
     expires_at = _ensure_aware(credential.token_expires_at)
     expires_in = max(0, int((expires_at - utcnow()).total_seconds())) if expires_at else 0

@@ -43,7 +43,7 @@ class Config:
     MINIMAX_CLIENT_SECRET = os.environ.get("MINIMAX_CLIENT_SECRET", "")
     MINIMAX_REDIRECT_URI = os.environ.get("MINIMAX_REDIRECT_URI", "")
     MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
+    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"  # nosec B105 — URL, not a password
     MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
 
     MINIMAX_API_KEY = os.environ.get("MINIMAX_API_KEY", "")
