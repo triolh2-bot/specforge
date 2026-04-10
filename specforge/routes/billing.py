@@ -20,7 +20,7 @@ from ..services.billing import (
 )
 from ..services.paypal import (
     activate_subscription,
-    cancel_subscription,
+    cancel_subscription as paypal_cancel_subscription,
     create_paypal_subscription,
     handle_paypal_webhook_event,
     verify_paypal_webhook_signature,
@@ -150,7 +150,7 @@ def cancel_subscription():
     data = request.get_json(silent=True) or {}
     reason = data.get("reason", "Cancelled by user")
 
-    success = cancel_subscription(workspace_id, reason)
+    success = paypal_cancel_subscription(workspace_id, reason)
     if not success:
         return error_response(
             "No active PayPal subscription found for this workspace.",
