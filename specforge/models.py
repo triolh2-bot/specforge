@@ -77,3 +77,76 @@ class Workspace(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
     name = db.Column(db.String(128), nullable=False)
+
+
+class ExportRecord(db.Model):
+    __tablename__ = "export_records"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
+    analysis_id = db.Column(db.String(36), nullable=True, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+    export_format = db.Column(db.String(16), nullable=False)  # markdown, html, json
+    content = db.Column(db.Text, nullable=False)
+    filename = db.Column(db.String(256), nullable=False)
+    content_length = db.Column(db.Integer, nullable=False, default=0)
+    share_token = db.Column(db.String(64), nullable=True, unique=True, index=True)
+    share_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    download_count = db.Column(db.Integer, nullable=False, default=0)
+
+
+class ShareLink(db.Model):
+    __tablename__ = "share_links"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
+    analysis_id = db.Column(db.String(36), nullable=False, index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    token = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    access_level = db.Column(db.String(16), nullable=False, default="view")  # view, edit
+    created_by_role = db.Column(db.String(32), nullable=False, default="owner")
+    view_count = db.Column(db.Integer, nullable=False, default=0)
+
+
+class ProductEvent(db.Model):
+    __tablename__ = "product_events"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=True, index=True)
+    analysis_id = db.Column(db.String(36), nullable=True, index=True)
+    request_id = db.Column(db.String(64), nullable=True)
+
+    category = db.Column(db.String(32), nullable=False, index=True)
+    name = db.Column(db.String(128), nullable=False, index=True)
+    properties_json = db.Column(db.Text, nullable=True)
+    occurred_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+
+
+class QuotaUsage(db.Model):
+    __tablename__ = "quota_usage"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
+    metric = db.Column(db.String(64), nullable=False, index=True)
+    amount = db.Column(db.Integer, nullable=False, default=1)
+    used_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+
+
+class WorkspaceSubscription(db.Model):
+    __tablename__ = "workspace_subscriptions"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, unique=True, index=True)
+    plan = db.Column(db.String(32), nullable=False, default="free")
+    status = db.Column(db.String(16), nullable=False, default="active")  # active, past_due, canceled, expired
+    provider = db.Column(db.String(32), nullable=True)  # e.g., "stripe"
+    provider_subscription_id = db.Column(db.String(128), nullable=True)
+    current_period_start = db.Column(db.DateTime(timezone=True), nullable=True)
+    current_period_end = db.Column(db.DateTime(timezone=True), nullable=True)
+    canceled_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)

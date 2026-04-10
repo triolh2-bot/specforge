@@ -1,7 +1,8 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from specforge import create_app
+from specforge.services.ai_providers import ProviderResponse, registry
 
 
 class TestConfig:
@@ -20,15 +21,20 @@ class TestConfig:
     MINIMAX_MODEL = "MiniMax-M2.5"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    MIGRATIONS_DIR = "/home/kali/.openclaw/workspace/specforge-mvp/migrations"
+    MIGRATIONS_DIR = "migrations"
 
 
 class PrdGenerationTests(unittest.TestCase):
-    def test_generate_prd_uses_rule_based_output_when_ai_is_disabled(self):
-        from specforge.services.prd import generate_prd
+    def setUp(self):
+        # Reset registry before each test
+        registry._providers.clear()
+        registry._fallback_order.clear()
 
+    def test_generate_prd_uses_rule_based_output_when_ai_is_disabled(self):
         app = create_app(TestConfig)
         with app.test_request_context("/"):
+            from specforge.services.prd import generate_prd
+
             result = generate_prd(
                 "Create a CRM for sales teams with contact management, reporting, and admin controls.",
                 use_ai=False,
@@ -40,27 +46,37 @@ class PrdGenerationTests(unittest.TestCase):
         self.assertIn("functional_requirements", result["prd"])
 
     def test_generate_prd_marks_fallback_when_ai_call_returns_nothing(self):
-        from specforge.services.prd import generate_prd
-
         config = type("Config", (TestConfig,), {"MINIMAX_API_KEY": "test-key"})
         app = create_app(config)
 
+        mock_provider = MagicMock()
+        mock_provider.name = "minimax"
+        mock_provider.display_name = "MiniMax AI"
+        mock_provider.is_configured.return_value = True
+        mock_provider.health_check.return_value = MagicMock(value=lambda: "healthy")
+        mock_provider.capabilities = ()
+        mock_provider.get_available_models.return_value = ()
+        mock_provider.chat_completion.return_value = ProviderResponse(
+            success=False, error="Provider unavailable"
+        )
+        registry.register(mock_provider)
+
         with app.test_request_context("/"):
-            with patch("specforge.services.prd.call_minimax_chat_api", return_value=None):
-                result = generate_prd(
-                    "Create a SaaS app with subscriptions, billing, and team workspaces.",
-                    use_ai=True,
-                )
+            from specforge.services.prd import generate_prd
+
+            result = generate_prd(
+                "Create a SaaS app with subscriptions, billing, and team workspaces.",
+                use_ai=True,
+            )
 
         self.assertEqual(result["domain"], "saas")
         self.assertEqual(result["ai_enhanced"]["status"], "fallback")
         self.assertEqual(result["ai_enhanced"]["provider"], "minimax")
 
     def test_generate_prd_uses_ai_questions_when_provider_returns_them(self):
-        from specforge.services.prd import generate_prd
-
         config = type("Config", (TestConfig,), {"MINIMAX_API_KEY": "test-key"})
         app = create_app(config)
+
         ai_result = {
             "clarification_questions": [
                 "What pricing tiers should be offered?",
@@ -76,12 +92,25 @@ class PrdGenerationTests(unittest.TestCase):
             "estimated_timeline": "10 weeks",
         }
 
+        mock_provider = MagicMock()
+        mock_provider.name = "minimax"
+        mock_provider.display_name = "MiniMax AI"
+        mock_provider.is_configured.return_value = True
+        mock_provider.health_check.return_value = MagicMock(value=lambda: "healthy")
+        mock_provider.capabilities = ()
+        mock_provider.get_available_models.return_value = ()
+        mock_provider.chat_completion.return_value = ProviderResponse(
+            success=True, data=ai_result, model="test-model"
+        )
+        registry.register(mock_provider)
+
         with app.test_request_context("/"):
-            with patch("specforge.services.prd.call_minimax_chat_api", return_value=ai_result):
-                result = generate_prd(
-                    "Create a SaaS app with subscriptions, billing, and team workspaces.",
-                    use_ai=True,
-                )
+            from specforge.services.prd import generate_prd
+
+            result = generate_prd(
+                "Create a SaaS app with subscriptions, billing, and team workspaces.",
+                use_ai=True,
+            )
 
         self.assertEqual(result["ai_enhanced"]["status"], "success")
         self.assertEqual(result["clarification_questions"], ai_result["clarification_questions"][:5])

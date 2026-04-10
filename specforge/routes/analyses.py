@@ -4,6 +4,7 @@ from ..http import error_response, json_response
 from ..services.abuse import rate_limit
 from ..services.auth_session import ensure_workspace_context
 from ..services.analysis_store import fetch_analysis, fetch_analysis_history
+from ..services.rbac import PERM, enforce_resource_access
 
 analyses_bp = Blueprint("analyses", __name__)
 
@@ -22,6 +23,8 @@ def _parse_positive_int(value, default):
 @rate_limit("list_analyses")
 def list_analyses():
     workspace = ensure_workspace_context()
+    enforce_resource_access(workspace["workspace_id"], PERM.READ_ANALYSIS.name)
+
     limit = _parse_positive_int(request.args.get("limit"), 20)
     offset = _parse_positive_int(request.args.get("offset"), 0)
 
@@ -41,6 +44,8 @@ def list_analyses():
 @rate_limit("get_analysis")
 def get_analysis(analysis_id):
     workspace = ensure_workspace_context()
+    enforce_resource_access(workspace["workspace_id"], PERM.READ_ANALYSIS.name)
+
     payload = fetch_analysis(analysis_id, workspace["workspace_id"])
     if not payload:
         return error_response("Analysis not found", status=404, code="analysis_not_found")
