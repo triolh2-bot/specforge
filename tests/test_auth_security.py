@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from pathlib import Path
 
 from flask import session
 
@@ -13,6 +14,8 @@ from specforge.services.auth_session import (
     get_valid_minimax_access_token,
     store_minimax_tokens,
 )
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestConfig:
@@ -40,7 +43,7 @@ class AuthSecurityTests(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
         db_path = os.path.join(self.tempdir.name, "specforge-auth.db")
-        migrations_dir = os.path.join("/home/kali/.openclaw/workspace/specforge-mvp", "migrations")
+        migrations_dir = str(REPO_ROOT / "migrations")
 
         class _Config(TestConfig):
             SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"

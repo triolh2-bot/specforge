@@ -45,3 +45,18 @@ class HealthResponse(TypedDict, total=False):
     summary: dict[str, str]
     checks: list[HealthCheck]
     request_id: str
+
+
+class ProviderInfo(TypedDict, total=False):
+    name: str
+    display_name: str
+    capabilities: list[str]
+    configured: bool
+    status: str
+    models: list[str]
+
+
+class ProviderListResponse(TypedDict, total=False):
+    providers: list[ProviderInfo]
+    available: list[str]
+    preferred: str | None

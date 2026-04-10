@@ -3,460 +3,1086 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpecForge - AI Requirement Expansion</title>
+    <meta name="description" content="SpecForge turns brief requirements into comprehensive Product Requirements Documents with AI-powered analysis.">
+    <title>SpecForge — Requirements Analysis &amp; PRD Generation</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        brand: { 50: '#f0f0ff', 100: '#e0e0ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+                        slate: { 850: '#1a1f2e' }
+                    }
+                }
+            }
         }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        @media (max-width: 768px) { .sidebar { display: none; } .sidebar.open { display: block; } }
+        :focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 4px; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white border-b">
-        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <span class="text-2xl">🔓</span>
-                <h1 class="text-xl font-bold gradient-text">SpecForge</h1>
+<body class="bg-slate-50 min-h-screen flex flex-col">
+
+    <!-- Skip navigation link for accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-brand-600 text-white px-4 py-2 rounded-lg z-50">Skip to main content</a>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-40" role="banner">
+        <div class="max-w-screen-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <!-- Mobile menu toggle -->
+                <button id="mobile-menu-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-100" aria-label="Toggle sidebar navigation" aria-expanded="false">
+                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <!-- Logo -->
+                <a href="/" class="flex items-center gap-2 text-brand-700 hover:text-brand-600 transition" aria-label="SpecForge home">
+                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    <span class="text-lg font-bold hidden sm:inline">SpecForge</span>
+                </a>
             </div>
-            <div class="flex items-center gap-4">
-                <span class="text-sm text-gray-500">AI Requirement Expansion</span>
-                <div id="auth-section">
-                    <!-- Auth status will be loaded here -->
+
+            <div class="flex items-center gap-3">
+                <!-- Quota indicator -->
+                <div id="quota-indicator" class="hidden sm:flex items-center gap-2 text-xs text-gray-500" title="Usage this month">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    <span id="quota-text">Free plan</span>
+                </div>
+
+                <!-- Auth status -->
+                <div id="auth-status" class="flex items-center gap-2">
+                    <a href="/auth/minimax" class="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1" role="button">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        Connect AI
+                    </a>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-4 py-8">
-        <!-- Auth Banner -->
-        <div id="auth-banner" class="hidden bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl p-4 mb-8">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <span>🤖</span>
-                    <span>MiniMax AI Enhanced Mode</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <span id="auth-status-text">Connected</span>
-                    <a href="/auth/logout" class="text-sm bg-white/20 px-3 py-1 rounded hover:bg-white/30">Disconnect</a>
-                </div>
-            </div>
-        </div>
+    <div class="max-w-screen-2xl mx-auto w-full flex-1 flex">
 
-        <!-- Hero -->
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-900 mb-3">
-                Turn "build me an app" into buildable software
-            </h2>
-            <p class="text-gray-600 max-w-2xl mx-auto">
-                Paste your client's 2-5 line brief. Get a complete PRD with Negative Scope Detection™.
-            </p>
-        </div>
-
-        <!-- Input Section -->
-        <div class="bg-white rounded-xl shadow-sm border p-6 mb-8">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-                Client Requirements (2-5 lines)
-            </label>
-            <textarea
-                id="requirements"
-                rows="4"
-                class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                placeholder="Example: I want an e-commerce site for my bakery. Instagram-style feed. People can order and pay. Need admin panel."
-            ></textarea>
-
-            <div class="mt-4 flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" id="ai-enhance" class="w-4 h-4 text-purple-600 rounded">
-                        <span class="text-sm text-gray-700">🤖 AI Enhance with MiniMax</span>
-                    </label>
-                    <select id="ai-provider" class="text-sm border rounded px-2 py-1">
-                        <option value="minimax">MiniMax</option>
-                    </select>
-                </div>
-                <button
-                    onclick="analyze()"
-                    class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:from-purple-700 hover:to-indigo-700 transition"
-                >
-                    🔍 Analyze Requirements
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="sidebar w-64 bg-white border-r border-gray-200 min-h-[calc(100vh-3.5rem)] flex-shrink-0" role="navigation" aria-label="Main navigation">
+            <nav class="p-4 space-y-1">
+                <button onclick="switchView('analyze')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-brand-700 bg-brand-50" data-view="analyze" aria-current="page">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    Analyze
                 </button>
-            </div>
-        </div>
+                <button onclick="switchView('history')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900" data-view="history">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    History
+                    <span id="history-count" class="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full hidden">0</span>
+                </button>
+                <button onclick="switchView('settings')" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900" data-view="settings">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.616 2.924-1.616 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.616.426 1.616 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.616-2.924 1.616-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.616-.426-1.616-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Settings
+                </button>
 
-        <!-- Loading -->
-        <div id="loading" class="hidden text-center py-8">
-            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-            <p class="text-gray-500 mt-2">Analyzing requirements...</p>
-        </div>
+                <div class="border-t border-gray-200 my-3"></div>
 
-        <!-- Results -->
-        <div id="results" class="hidden space-y-6">
-            <!-- RMS Score -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold">Requirement Maturity Score</h3>
-                    <span id="rms-score" class="text-3xl font-bold text-purple-600">0</span>
+                <a href="/legal/privacy" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    Privacy
+                </a>
+                <a href="/legal/terms" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-50">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Terms
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="main-content" class="flex-1 min-w-0" role="main">
+
+            <!-- ==================== ANALYZE VIEW ==================== -->
+            <div id="view-analyze" class="view-panel p-4 md:p-8 max-w-4xl mx-auto w-full">
+
+                <!-- Hero Section -->
+                <div class="mb-8">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Analyze Requirements</h1>
+                    <p class="text-gray-500 mt-1">Paste your brief and get a structured PRD with domain analysis, missing features, and AI enhancement.</p>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-3">
-                    <div id="rms-bar" class="bg-gradient-to-r from-purple-600 to-indigo-600 h-3 rounded-full" style="width: 0%"></div>
+
+                <!-- Error Banner (hidden by default) -->
+                <div id="error-banner" class="hidden mb-6 bg-red-50 border border-red-200 rounded-xl p-4 fade-in" role="alert" aria-live="polite">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <div class="flex-1">
+                            <p id="error-message" class="text-sm text-red-800 font-medium"></p>
+                            <p id="error-detail" class="text-xs text-red-600 mt-1"></p>
+                        </div>
+                        <button onclick="dismissError()" class="text-red-400 hover:text-red-600" aria-label="Dismiss error">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
                 </div>
-                <p class="text-sm text-gray-500 mt-2">Detected Domain: <span id="domain" class="font-medium">-</span></p>
-            </div>
 
-            <!-- Negative Scope -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="text-lg font-semibold mb-4">🚨 What's Missing (Negative Scope Detection™)</h3>
-                <p class="text-gray-600 mb-4">These features weren't mentioned but are likely needed:</p>
-                <ul id="missing-features" class="space-y-2"></ul>
-            </div>
-
-            <!-- Clarification Questions -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <h3 class="text-lg font-semibold mb-4">❓ Clarification Questions</h3>
-                <ul id="questions" class="space-y-3"></ul>
-            </div>
-
-            <!-- AI Enhancement Result -->
-            <div id="ai-enhancement-section" class="hidden bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-200 p-6">
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="text-xl">🤖</span>
-                    <h3 class="text-lg font-semibold">MiniMax AI Enhancement</h3>
+                <!-- Quota Exceeded Warning -->
+                <div id="quota-warning" class="hidden mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 fade-in" role="alert">
+                    <div class="flex items-start gap-3">
+                        <svg class="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <div>
+                            <p class="text-sm text-amber-800 font-medium" id="quota-warning-text"></p>
+                            <p class="text-xs text-amber-600 mt-1">Contact support to increase your limit or wait for the next billing cycle.</p>
+                        </div>
+                    </div>
                 </div>
-                <div id="ai-enhancement-content" class="prose max-w-none text-gray-700"></div>
-            </div>
 
-            <!-- PRD Preview -->
-            <div class="bg-white rounded-xl shadow-sm border p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold">📄 Generated PRD</h3>
-                    <button
-                        onclick="downloadPRD()"
-                        class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition flex items-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Download PRD
-                    </button>
+                <!-- Input Card -->
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="p-5 md:p-6">
+                        <label for="requirements" class="block text-sm font-semibold text-gray-700 mb-2">
+                            Requirements Brief
+                        </label>
+                        <textarea
+                            id="requirements"
+                            rows="5"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none resize-none placeholder:text-gray-400"
+                            placeholder="Example: I want an online bakery where customers can browse cakes, add to cart, and checkout with Stripe. Need an admin panel to manage orders and inventory."
+                            aria-describedby="requirements-help"
+                        ></textarea>
+                        <div id="requirements-help" class="mt-2 flex items-center justify-between text-xs text-gray-400">
+                            <span>Describe your project in as much detail as possible</span>
+                            <span id="char-count">0 chars</span>
+                        </div>
+
+                        <!-- Options Row -->
+                        <div class="mt-4 flex flex-wrap items-center gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" id="ai-enhance" class="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                                <span class="text-sm text-gray-700">AI Enhancement</span>
+                                <span class="text-xs text-gray-400" id="ai-hint">(requires connection)</span>
+                            </label>
+
+                            <div class="flex items-center gap-2">
+                                <label for="ai-provider" class="text-xs text-gray-500">Provider:</label>
+                                <select id="ai-provider" class="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                                    <option value="minimax">MiniMax</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Bar -->
+                    <div class="bg-gray-50 px-5 md:px-6 py-4 flex items-center justify-between border-t border-gray-100">
+                        <button onclick="clearForm()" class="text-sm text-gray-500 hover:text-gray-700 font-medium px-3 py-2 rounded-lg hover:bg-gray-100 transition" type="button">
+                            Clear
+                        </button>
+                        <button
+                            id="analyze-btn"
+                            onclick="analyze()"
+                            class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm hover:shadow transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            type="button"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            Analyze
+                        </button>
+                    </div>
                 </div>
-                <div id="prd-content" class="prose max-w-none"></div>
-            </div>
-        </div>
-    </main>
 
-    <footer class="border-t mt-12 py-6">
-        <div class="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
-            <p>Built with ❤️ by fewic | SpecForge v2.0</p>
+                <!-- Loading State -->
+                <div id="loading" class="hidden mt-8" role="status" aria-live="polite">
+                    <div class="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                        <div class="inline-flex items-center gap-3">
+                            <div class="animate-spin rounded-full h-6 w-6 border-2 border-brand-500 border-t-transparent"></div>
+                            <div class="text-left">
+                                <p class="text-sm font-medium text-gray-700">Analyzing requirements...</p>
+                                <p class="text-xs text-gray-400 mt-0.5" id="loading-detail">Detecting domain, scoring maturity, generating PRD</p>
+                            </div>
+                        </div>
+                        <div class="mt-6 space-y-3 max-w-md mx-auto">
+                            <div class="skeleton h-4 rounded w-3/4"></div>
+                            <div class="skeleton h-4 rounded w-1/2"></div>
+                            <div class="skeleton h-4 rounded w-2/3"></div>
+                        </div>
+                    </div>
+                    <span class="sr-only">Loading analysis results</span>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results" class="hidden mt-8 space-y-6 fade-in">
+
+                    <!-- Score & Domain Bar -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white rounded-xl border border-gray-200 p-5">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="text-sm font-medium text-gray-500">Maturity Score</span>
+                                <span id="rms-score" class="text-2xl font-bold text-brand-600">0</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2">
+                                <div id="rms-bar" class="bg-brand-600 h-2 rounded-full transition-all duration-700" style="width: 0%"></div>
+                            </div>
+                            <p id="rms-label" class="text-xs text-gray-400 mt-2"></p>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-5">
+                            <span class="text-sm font-medium text-gray-500 block mb-1">Detected Domain</span>
+                            <span id="domain-badge" class="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900 bg-gray-100 px-3 py-1 rounded-full">-</span>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-5">
+                            <span class="text-sm font-medium text-gray-500 block mb-1">Target Users</span>
+                            <div id="target-users" class="flex flex-wrap gap-1.5"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs for Results -->
+                    <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="border-b border-gray-200" role="tablist" aria-label="Analysis results">
+                            <div class="flex overflow-x-auto">
+                                <button onclick="switchTab('missing')" class="result-tab px-4 py-3 text-sm font-medium text-brand-700 border-b-2 border-brand-600 whitespace-nowrap" data-tab="missing" role="tab" aria-selected="true">Missing Features</button>
+                                <button onclick="switchTab('questions')" class="result-tab px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="questions" role="tab" aria-selected="false">Questions</button>
+                                <button onclick="switchTab('prd')" class="result-tab px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap" data-tab="prd" role="tab" aria-selected="false">PRD</button>
+                                <button onclick="switchTab('conflicts')" class="result-tab px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap hidden" data-tab="conflicts" role="tab" aria-selected="false">Conflicts</button>
+                            </div>
+                        </div>
+
+                        <!-- Tab panels -->
+                        <div class="p-5 md:p-6 min-h-[200px]">
+                            <div id="tab-missing" class="tab-panel" role="tabpanel">
+                                <p class="text-sm text-gray-500 mb-4">These features weren't mentioned but are typically needed for this domain:</p>
+                                <ul id="missing-features" class="space-y-2" role="list"></ul>
+                            </div>
+                            <div id="tab-questions" class="tab-panel hidden" role="tabpanel">
+                                <p class="text-sm text-gray-500 mb-4">Questions to clarify scope with stakeholders:</p>
+                                <ol id="questions" class="space-y-3" role="list"></ol>
+                            </div>
+                            <div id="tab-prd" class="tab-panel hidden" role="tabpanel">
+                                <div id="prd-content" class="prose prose-sm max-w-none text-gray-700"></div>
+                            </div>
+                            <div id="tab-conflicts" class="tab-panel hidden" role="tabpanel">
+                                <div id="conflicts-list" class="space-y-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Enhancement Result -->
+                    <div id="ai-result-section" class="hidden bg-gradient-to-r from-brand-50 to-indigo-50 rounded-xl border border-brand-200 overflow-hidden">
+                        <div class="p-5 md:p-6">
+                            <div class="flex items-center gap-2 mb-4">
+                                <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                <h3 class="text-base font-semibold text-gray-900">AI Enhancement Results</h3>
+                                <span id="ai-provider-badge" class="text-xs bg-white text-gray-500 px-2 py-0.5 rounded-full"></span>
+                            </div>
+                            <div id="ai-result-content" class="space-y-4 text-sm text-gray-700"></div>
+                        </div>
+                    </div>
+
+                    <!-- Export & Actions Bar -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="downloadPRD()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition" type="button">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Download Markdown
+                        </button>
+                        <button onclick="serverExport('html')" class="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition" type="button">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                            Export HTML
+                        </button>
+                        <button onclick="serverExport('json')" class="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition" type="button">
+                            Export JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== HISTORY VIEW ==================== -->
+            <div id="view-history" class="view-panel hidden p-4 md:p-8 max-w-4xl mx-auto w-full">
+                <div class="mb-8">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Analysis History</h1>
+                    <p class="text-gray-500 mt-1">View and manage your past requirement analyses.</p>
+                </div>
+                <div id="history-list" class="space-y-3">
+                    <div id="history-empty" class="text-center py-16">
+                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <p class="text-gray-500 font-medium">No analyses yet</p>
+                        <p class="text-sm text-gray-400 mt-1">Run your first analysis to see it here.</p>
+                        <button onclick="switchView('analyze')" class="mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium">Go to Analyze →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== SETTINGS VIEW ==================== -->
+            <div id="view-settings" class="view-panel hidden p-4 md:p-8 max-w-4xl mx-auto w-full">
+                <div class="mb-8">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Settings</h1>
+                    <p class="text-gray-500 mt-1">Manage your workspace, quota, and preferences.</p>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Quota Card -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Usage &amp; Quota</h2>
+                        <div id="quota-details" class="space-y-3">
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-sm text-gray-600">Plan</span>
+                                <span id="settings-plan" class="text-sm font-medium text-gray-900">-</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-sm text-gray-600">Analyses this month</span>
+                                <span id="settings-analyses" class="text-sm font-medium text-gray-900">-</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-sm text-gray-600">AI enhancements this month</span>
+                                <span id="settings-ai" class="text-sm font-medium text-gray-900">-</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <span class="text-sm text-gray-600">Exports this month</span>
+                                <span id="settings-exports" class="text-sm font-medium text-gray-900">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Upgrade buttons -->
+                        <div id="upgrade-section" class="mt-6 pt-4 border-t border-gray-100">
+                            <p class="text-sm font-medium text-gray-700 mb-3">Upgrade your plan</p>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="subscribePaypal('pro')" class="flex-1 min-w-[140px] bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition text-center">
+                                    Pro — $19.99/mo
+                                </button>
+                                <button onclick="subscribePaypal('enterprise')" class="flex-1 min-w-[140px] bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition text-center">
+                                    Enterprise — $99.99/mo
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2">Powered by PayPal · Cancel anytime</p>
+                        </div>
+
+                        <!-- Cancel subscription (shown when active) -->
+                        <div id="cancel-section" class="hidden mt-6 pt-4 border-t border-gray-100">
+                            <button onclick="cancelSubscription()" class="text-sm text-red-600 hover:text-red-700 font-medium">
+                                Cancel subscription
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Data Rights Card -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Data &amp; Privacy</h2>
+                        <div class="space-y-3">
+                            <button onclick="exportMyData()" class="w-full text-left flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Export My Data</p>
+                                    <p class="text-xs text-gray-500">Download all your data in JSON format (GDPR Art. 15)</p>
+                                </div>
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                            </button>
+                            <button onclick="confirmDataDeletion()" class="w-full text-left flex items-center justify-between px-4 py-3 rounded-lg border border-red-200 hover:bg-red-50 transition">
+                                <div>
+                                    <p class="text-sm font-medium text-red-700">Delete All My Data</p>
+                                    <p class="text-xs text-red-500">Permanently delete all analyses and associated data (GDPR Art. 17)</p>
+                                </div>
+                                <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-200 bg-white" role="contentinfo">
+        <div class="max-w-screen-2xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-400">
+            <div class="flex items-center gap-4">
+                <span>&copy; <span id="footer-year"></span> SpecForge</span>
+                <a href="/legal/terms" class="hover:text-gray-600">Terms</a>
+                <a href="/legal/privacy" class="hover:text-gray-600">Privacy</a>
+                <a href="/legal/acceptable-use" class="hover:text-gray-600">Acceptable Use</a>
+            </div>
+            <div>
+                <span id="footer-version">v2.1.0</span>
+            </div>
         </div>
     </footer>
 
+    <!-- Main Application Script -->
     <script>
+    (function() {
+        'use strict';
+
+        // ========================
+        // State
+        // ========================
+        let currentAnalysis = null;
+        let currentView = 'analyze';
+        let aiConnected = false;
+
+        // ========================
+        // DOM helpers
+        // ========================
+        const $ = (sel) => document.querySelector(sel);
+        const $$ = (sel) => document.querySelectorAll(sel);
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        function show(el) { if (el) el.classList.remove('hidden'); }
+        function hide(el) { if (el) el.classList.add('hidden'); }
+
+        // ========================
+        // Navigation
+        // ========================
+        window.switchView = function(view) {
+            currentView = view;
+            $$('.view-panel').forEach(p => p.classList.add('hidden'));
+            const target = $('#view-' + view);
+            if (target) target.classList.remove('hidden');
+
+            $$('.nav-item').forEach(btn => {
+                const isActive = btn.dataset.view === view;
+                btn.classList.toggle('text-brand-700', isActive);
+                btn.classList.toggle('bg-brand-50', isActive);
+                btn.classList.toggle('text-gray-600', !isActive);
+                btn.setAttribute('aria-current', isActive ? 'page' : 'false');
+            });
+
+            // Close mobile sidebar
+            $('#sidebar').classList.remove('open');
+            $('#mobile-menu-btn').setAttribute('aria-expanded', 'false');
+
+            if (view === 'history') loadHistory();
+            if (view === 'settings') loadSettings();
+        };
+
+        // Mobile menu toggle
+        $('#mobile-menu-btn').addEventListener('click', () => {
+            const sidebar = $('#sidebar');
+            const isOpen = sidebar.classList.toggle('open');
+            $('#mobile-menu-btn').setAttribute('aria-expanded', isOpen);
+        });
+
+        // ========================
+        // Tab switching
+        // ========================
+        window.switchTab = function(tab) {
+            $$('.tab-panel').forEach(p => p.classList.add('hidden'));
+            const target = $('#tab-' + tab);
+            if (target) target.classList.remove('hidden');
+
+            $$('.result-tab').forEach(btn => {
+                const isActive = btn.dataset.tab === tab;
+                btn.classList.toggle('text-brand-700', isActive);
+                btn.classList.toggle('border-b-2', isActive);
+                btn.classList.toggle('border-brand-600', isActive);
+                btn.classList.toggle('text-gray-500', !isActive);
+                btn.setAttribute('aria-selected', isActive);
+            });
+
+            // Show/hide conflicts tab
+            const conflictsTab = $('[data-tab="conflicts"]');
+            if (conflictsTab) conflictsTab.classList.toggle('hidden', tab !== 'conflicts');
+        };
+
+        // ========================
+        // Error handling
+        // ========================
+        function showError(message, detail) {
+            $('#error-message').textContent = message;
+            $('#error-detail').textContent = detail || '';
+            show($('#error-banner'));
+        }
+
+        window.dismissError = function() {
+            hide($('#error-banner'));
+            hide($('#quota-warning'));
+        };
+
+        // ========================
+        // Auth check
+        // ========================
         async function checkAuth() {
             try {
-                const response = await fetch('/auth/status');
-                const data = await response.json();
+                const resp = await fetch('/auth/status');
+                const data = await resp.json();
+                aiConnected = data.authenticated;
 
-                const authSection = document.getElementById('auth-section');
-                const authBanner = document.getElementById('auth-banner');
-
+                const authSection = $('#auth-status');
                 if (data.authenticated) {
                     authSection.innerHTML = `
                         <div class="flex items-center gap-2 text-sm">
-                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
-                            <span class="text-gray-600">MiniMax Connected</span>
-                        </div>
-                    `;
-                    authBanner.classList.remove('hidden');
-                    document.getElementById('ai-enhance').checked = true;
+                            <span class="w-2 h-2 bg-green-500 rounded-full" aria-hidden="true"></span>
+                            <span class="text-gray-600 text-xs">AI Connected</span>
+                        </div>`;
+                    $('#ai-enhance').checked = true;
+                    $('#ai-hint').textContent = '(connected)';
                 } else {
                     authSection.innerHTML = `
-                        <a href="/auth/minimax" class="text-sm text-purple-600 hover:underline">
-                            🔐 Connect MiniMax
-                        </a>
-                    `;
+                        <a href="/auth/minimax" class="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Connect AI
+                        </a>`;
                 }
             } catch (e) {
-                console.log('Auth check failed:', e);
+                // Auth check failure is non-fatal
             }
         }
 
-        checkAuth();
+        // ========================
+        // Quota check
+        // ========================
+        async function checkQuota() {
+            try {
+                const resp = await fetch('/api/billing/quota');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const analyses = data.analyses;
+                const pct = Math.round((analyses.used / analyses.limit) * 100);
+                $('#quota-text').textContent = `${data.plan} · ${analyses.used}/${analyses.limit}`;
 
-        let currentAnalysisResult = null;
+                // Warn when close to limit
+                if (pct >= 80) {
+                    $('#quota-indicator').classList.add('text-amber-600');
+                }
+            } catch (e) {}
+        }
 
-        async function analyze() {
-            const input = document.getElementById('requirements').value.trim();
-            if (!input) return alert('Please enter requirements');
+        // ========================
+        // Character counter
+        // ========================
+        $('#requirements').addEventListener('input', function() {
+            $('#char-count').textContent = this.value.length + ' chars';
+        });
 
-            const useAI = document.getElementById('ai-enhance').checked;
-            const aiProvider = document.getElementById('ai-provider').value;
+        // ========================
+        // Clear form
+        // ========================
+        window.clearForm = function() {
+            $('#requirements').value = '';
+            $('#char-count').textContent = '0 chars';
+            hide($('#results'));
+            hide($('#loading'));
+            hide($('#error-banner'));
+            hide($('#quota-warning'));
+            currentAnalysis = null;
+        };
 
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('results').classList.add('hidden');
+        // ========================
+        // Main analyze function
+        // ========================
+        window.analyze = async function() {
+            const input = $('#requirements').value.trim();
+            if (!input) {
+                showError('Missing requirements', 'Please describe your project in the text area above.');
+                $('#requirements').focus();
+                return;
+            }
+
+            const useAI = $('#ai-enhance').checked;
+            const aiProvider = $('#ai-provider').value;
+
+            hide($('#results'));
+            hide($('#error-banner'));
+            hide($('#quota-warning'));
+            show($('#loading'));
+            $('#loading-detail').textContent = useAI ? 'Sending to AI provider for enhancement...' : 'Running rule-based analysis...';
+            $('#analyze-btn').disabled = true;
 
             try {
-                const response = await fetch('/analyze', {
+                const resp = await fetch('/analyze', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         requirements: input,
                         ai_enhance: useAI,
                         ai_provider: aiProvider
                     })
                 });
-                const data = await response.json();
 
-                currentAnalysisResult = data;
+                const data = await resp.json();
 
-                document.getElementById('rms-score').textContent = data.rms + '/100';
-                document.getElementById('rms-bar').style.width = data.rms + '%';
-                document.getElementById('domain').textContent = data.domain.charAt(0).toUpperCase() + data.domain.slice(1);
-
-                const missingList = document.getElementById('missing-features');
-                missingList.innerHTML = data.missing_features.map(f =>
-                    `<li class="flex items-center gap-2 text-gray-700">
-                        <span class="text-red-500">○</span> ${f}
-                    </li>`
-                ).join('');
-
-                const questionsList = document.getElementById('questions');
-                questionsList.innerHTML = data.clarification_questions.map(q =>
-                    `<li class="flex items-start gap-2 text-gray-700">
-                        <span class="text-purple-500 mt-1">•</span> ${q}
-                    </li>`
-                ).join('');
-
-                const prd = data.prd;
-                let prdHTML = `
-                    <h4 class="font-semibold text-lg mb-2">${prd.title}</h4>
-                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
-                        <h5 class="font-medium text-gray-700">Overview</h5>
-                        <p class="text-gray-600 mt-1">${prd.overview.summary}</p>
-                        <p class="text-sm text-gray-500 mt-2">Project Type: ${prd.overview.project_type} | Target Users: ${prd.overview.target_users.join(', ')}</p>
-                    </div>
-                `;
-
-                if (prd.technical_constraints.tech_stack) {
-                    prdHTML += `
-                        <div class="mb-4">
-                            <h5 class="font-medium text-gray-700">Recommended Tech Stack</h5>
-                            <p class="text-gray-600 mt-1">${prd.technical_constraints.tech_stack}</p>
-                        </div>
-                    `;
+                if (!resp.ok) {
+                    handleApiError(resp.status, data);
+                    hide($('#loading'));
+                    $('#analyze-btn').disabled = false;
+                    return;
                 }
 
-                prdHTML += `
-                    <div class="mb-4">
-                        <h5 class="font-medium text-gray-700">In Scope</h5>
-                        <ul class="list-disc pl-5 mt-1">${prd.scope.in_scope.map(s => `<li class="text-gray-600">${s}</li>`).join('')}</ul>
-                    </div>
-                    <div class="mb-4">
-                        <h5 class="font-medium text-gray-700">Out of Scope</h5>
-                        <ul class="list-disc pl-5 mt-1">${prd.scope.out_of_scope.map(s => `<li class="text-gray-600">${s}</li>`).join('')}</ul>
-                    </div>
-                    <div class="mb-4">
-                        <h5 class="font-medium text-gray-700">Functional Requirements</h5>
-                        <ul class="list-disc pl-5 mt-1">${prd.functional_requirements.map(r => `<li class="text-gray-600">${r}</li>`).join('')}</ul>
-                    </div>
-                    <div class="mb-4">
-                        <h5 class="font-medium text-gray-700">Non-Functional Requirements</h5>
-                        <ul class="list-disc pl-5 mt-1">
-                            <li class="text-gray-600"><strong>Performance:</strong> ${prd.non_functional.performance}</li>
-                            <li class="text-gray-600"><strong>Security:</strong> ${prd.non_functional.security}</li>
-                            <li class="text-gray-600"><strong>Scalability:</strong> ${prd.non_functional.scalability}</li>
-                            <li class="text-gray-600"><strong>Reliability:</strong> ${prd.non_functional.reliability}</li>
-                        </ul>
-                    </div>
-                    <div class="mb-4">
-                        <h5 class="font-medium text-gray-700">Risks</h5>
-                        <ul class="list-disc pl-5 mt-1">${prd.risks.map(r => `<li class="text-gray-600">${r}</li>`).join('')}</ul>
-                    </div>
-                    <div class="mb-4">
-                        <h5 class="font-medium text-gray-700">Timeline Estimate</h5>
-                        <p class="text-gray-600 mt-1">${prd.technical_constraints.timeline}</p>
-                    </div>
-                    <div>
-                        <h5 class="font-medium text-gray-700">Next Steps</h5>
-                        <ul class="list-disc pl-5 mt-1">${prd.next_steps.map(s => `<li class="text-gray-600">${s}</li>`).join('')}</ul>
-                    </div>
-                `;
+                currentAnalysis = data;
+                renderResults(data);
+                hide($('#loading'));
+                show($('#results'));
 
-                document.getElementById('prd-content').innerHTML = prdHTML;
+                // Scroll to results
+                $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-                const aiSection = document.getElementById('ai-enhancement-section');
-                if (useAI && data.ai_enhanced && data.ai_enhanced.status === 'success' && data.ai_enhanced.data) {
-                    aiSection.classList.remove('hidden');
-                    const aiData = data.ai_enhanced.data;
-                    let aiHTML = '<div class="space-y-4">';
-
-                    if (aiData.tech_stack_recommendation) {
-                        aiHTML += `
-                            <div>
-                                <h5 class="font-medium text-gray-700">🛠️ Tech Stack Recommendation</h5>
-                                <p class="text-gray-600 mt-1">${aiData.tech_stack_recommendation}</p>
-                            </div>
-                        `;
-                    }
-
-                    if (aiData.estimated_timeline) {
-                        aiHTML += `
-                            <div>
-                                <h5 class="font-medium text-gray-700">⏱️ Estimated Timeline</h5>
-                                <p class="text-gray-600 mt-1">${aiData.estimated_timeline}</p>
-                            </div>
-                        `;
-                    }
-
-                    if (aiData.risk_factors && aiData.risk_factors.length > 0) {
-                        aiHTML += `
-                            <div>
-                                <h5 class="font-medium text-gray-700">⚠️ Risk Factors</h5>
-                                <ul class="list-disc pl-5 mt-1">
-                                    ${aiData.risk_factors.map(r => `<li class="text-gray-600">${r}</li>`).join('')}
-                                </ul>
-                            </div>
-                        `;
-                    }
-
-                    aiHTML += '</div>';
-                    document.getElementById('ai-enhancement-content').innerHTML = aiHTML;
-                } else {
-                    aiSection.classList.add('hidden');
-                }
-
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('results').classList.remove('hidden');
             } catch (error) {
-                alert('Error analyzing requirements');
-                document.getElementById('loading').classList.add('hidden');
+                showError('Network error', 'Could not reach the server. Please check your connection and try again.');
+                hide($('#loading'));
+            }
+
+            $('#analyze-btn').disabled = false;
+        };
+
+        // Handle API errors with user-friendly messages
+        function handleApiError(status, data) {
+            const error = data.error || {};
+            switch (status) {
+                case 400:
+                    showError('Invalid request', error.message || 'Please check your input and try again.');
+                    break;
+                case 401:
+                    showError('Authentication required', 'Please connect an AI provider or use rule-based analysis without AI enhancement.');
+                    break;
+                case 429:
+                    if (error.code === 'quota_exceeded') {
+                        $('#quota-warning-text').textContent = `Usage limit reached: ${error.metric} (${error.current}/${error.limit}) on '${error.plan}' plan.`;
+                        show($('#quota-warning'));
+                    } else {
+                        showError('Rate limit exceeded', 'Too many requests. Please wait a moment and try again.');
+                    }
+                    break;
+                case 500:
+                case 503:
+                    showError('Service unavailable', 'The server encountered an error. Please try again in a moment.');
+                    break;
+                default:
+                    showError('Request failed', error.message || 'An unexpected error occurred.');
             }
         }
 
-        function downloadPRD() {
-            if (!currentAnalysisResult) {
-                alert('Please analyze requirements first');
+        // ========================
+        // Render results
+        // ========================
+        function renderResults(data) {
+            // RMS Score
+            const rms = data.rms;
+            $('#rms-score').textContent = rms + '/100';
+            $('#rms-bar').style.width = rms + '%';
+
+            let rmsLabel = 'Incomplete';
+            if (rms >= 80) rmsLabel = 'Excellent — well-defined requirements';
+            else if (rms >= 60) rmsLabel = 'Good — mostly complete';
+            else if (rms >= 40) rmsLabel = 'Fair — some gaps remain';
+            else rmsLabel = 'Needs more detail';
+            $('#rms-label').textContent = rmsLabel;
+
+            // Domain
+            const domainName = data.domain.charAt(0).toUpperCase() + data.domain.slice(1);
+            $('#domain-badge').textContent = domainName;
+
+            // Target users
+            const usersEl = $('#target-users');
+            usersEl.innerHTML = (data.implied_users || []).map(u =>
+                `<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">${escapeHtml(u)}</span>`
+            ).join('');
+
+            // Missing features
+            const missingEl = $('#missing-features');
+            missingEl.innerHTML = (data.missing_features || []).map(f =>
+                `<li class="flex items-start gap-2 text-sm text-gray-700 py-1.5">
+                    <span class="w-1.5 h-1.5 bg-red-400 rounded-full mt-1.5 flex-shrink-0" aria-hidden="true"></span>
+                    ${escapeHtml(f)}
+                </li>`
+            ).join('') || '<p class="text-sm text-gray-400">No significant gaps detected</p>';
+
+            // Questions
+            const qEl = $('#questions');
+            qEl.innerHTML = (data.clarification_questions || []).map((q, i) =>
+                `<li class="flex items-start gap-3 text-sm text-gray-700 py-1.5">
+                    <span class="flex-shrink-0 w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-semibold" aria-hidden="true">${i + 1}</span>
+                    <span>${escapeHtml(q)}</span>
+                </li>`
+            ).join('') || '<p class="text-sm text-gray-400">No questions at this time</p>';
+
+            // Conflicts
+            if (data.conflicts && data.conflicts.length > 0) {
+                const cEl = $('#conflicts-list');
+                cEl.innerHTML = data.conflicts.map(c =>
+                    `<div class="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <svg class="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01"/></svg>
+                        <span>${escapeHtml(c)}</span>
+                    </div>`
+                ).join('');
+                show($('[data-tab="conflicts"]'));
+            } else {
+                hide($('[data-tab="conflicts"]'));
+            }
+
+            // PRD Content
+            const prd = data.prd || {};
+            const escTitle = escapeHtml(prd.title || 'Project Specification');
+            const escVersion = escapeHtml(prd.version || '1.0');
+            const escProjType = escapeHtml(prd.overview?.project_type || '');
+            const escSummary = escapeHtml(prd.overview?.summary || 'No summary available.');
+            
+            let prdHTML = `
+                <div class="mb-6">
+                    <h4 class="font-semibold text-gray-900 text-base mb-1">${escTitle}</h4>
+                    <p class="text-sm text-gray-500">Version ${escVersion} · ${escProjType}</p>
+                </div>
+                <div class="mb-5">
+                    <h5 class="font-medium text-gray-900 text-sm mb-2">Summary</h5>
+                    <p class="text-sm text-gray-600 leading-relaxed">${escSummary}</p>
+                </div>
+                <div class="mb-5">
+                    <h5 class="font-medium text-gray-900 text-sm mb-2">Scope</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs font-medium text-green-700 mb-1">In Scope</p>
+                            <ul class="text-sm text-gray-600 space-y-1">${(prd.scope?.in_scope || []).map(s => `<li class="flex items-start gap-1.5"><span class="text-green-500 mt-0.5">✓</span>${escapeHtml(s)}</li>`).join('')}</ul>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-red-700 mb-1">Out of Scope</p>
+                            <ul class="text-sm text-gray-600 space-y-1">${(prd.scope?.out_of_scope || []).map(s => `<li class="flex items-start gap-1.5"><span class="text-red-400 mt-0.5">—</span>${escapeHtml(s)}</li>`).join('')}</ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-5">
+                    <h5 class="font-medium text-gray-900 text-sm mb-2">Functional Requirements</h5>
+                    <ol class="text-sm text-gray-600 space-y-1">${(prd.functional_requirements || []).map((r, i) => `<li><span class="text-gray-400 mr-1">${i + 1}.</span>${escapeHtml(r)}</li>`).join('')}</ol>
+                </div>
+                <div class="mb-5">
+                    <h5 class="font-medium text-gray-900 text-sm mb-2">Non-Functional</h5>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-600">
+                        ${Object.entries(prd.non_functional || {}).map(([k, v]) => `<div><dt class="font-medium text-gray-700 capitalize">${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}
+                    </dl>
+                </div>
+                <div class="mb-5">
+                    <h5 class="font-medium text-gray-900 text-sm mb-2">Risks</h5>
+                    <ul class="text-sm text-gray-600 space-y-1">${(prd.risks || []).map(r => `<li class="flex items-start gap-1.5"><span class="text-amber-500">⚠</span>${escapeHtml(r)}</li>`).join('')}</ul>
+                </div>
+            `;
+
+            if (prd.technical_constraints?.tech_stack) {
+                prdHTML += `
+                    <div class="mb-5">
+                        <h5 class="font-medium text-gray-900 text-sm mb-1">Tech Stack</h5>
+                        <p class="text-sm text-gray-600">${escapeHtml(prd.technical_constraints.tech_stack)}</p>
+                    </div>`;
+            }
+            if (prd.technical_constraints?.timeline) {
+                prdHTML += `
+                    <div>
+                        <h5 class="font-medium text-gray-900 text-sm mb-1">Timeline</h5>
+                        <p class="text-sm text-gray-600">${escapeHtml(prd.technical_constraints.timeline)}</p>
+                    </div>`;
+            }
+
+            $('#prd-content').innerHTML = prdHTML;
+
+            // AI Enhancement
+            const aiSection = $('#ai-result-section');
+            if (data.ai_enhanced && data.ai_enhanced.status === 'success' && data.ai_enhanced.data) {
+                show(aiSection);
+                const aiData = data.ai_enhanced.data;
+                $('#ai-provider-badge').textContent = data.ai_enhanced.provider || 'AI';
+
+                let aiHTML = '';
+                if (aiData.tech_stack_recommendation) {
+                    aiHTML += `<div><h5 class="font-medium text-gray-900">Tech Stack</h5><p class="mt-1">${escapeHtml(aiData.tech_stack_recommendation)}</p></div>`;
+                }
+                if (aiData.estimated_timeline) {
+                    aiHTML += `<div><h5 class="font-medium text-gray-900">Timeline</h5><p class="mt-1">${escapeHtml(aiData.estimated_timeline)}</p></div>`;
+                }
+                if (aiData.risk_factors?.length) {
+                    aiHTML += `<div><h5 class="font-medium text-gray-900">Risk Factors</h5><ul class="mt-1 space-y-1">${aiData.risk_factors.map(r => `<li class="flex items-start gap-1.5"><span class="text-amber-500">⚠</span>${escapeHtml(r)}</li>`).join('')}</ul></div>`;
+                }
+                $('#ai-result-content').innerHTML = aiHTML;
+            } else {
+                hide(aiSection);
+            }
+
+            // Reset to first tab
+            switchTab('missing');
+        }
+
+        // ========================
+        // History
+        // ========================
+        async function loadHistory() {
+            try {
+                const resp = await fetch('/api/analyses?limit=50');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const items = data.items || [];
+                const countEl = $('#history-count');
+                const listEl = $('#history-list');
+                const emptyEl = $('#history-empty');
+
+                if (items.length === 0) {
+                    show(emptyEl);
+                    hide(countEl);
+                    return;
+                }
+
+                hide(emptyEl);
+                countEl.textContent = data.pagination?.total || items.length;
+                show(countEl);
+
+                listEl.innerHTML = items.map(item => `
+                    <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition cursor-pointer" onclick="viewAnalysis('${item.analysis_id}')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate">${escapeHtml(item.requirements_preview || 'Analysis')}</p>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    <span class="capitalize">${escapeHtml(item.domain)}</span> · RMS ${item.rms}/100 · ${new Date(item.created_at).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded-full ${item.ai_enhance_requested ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500'}">
+                                ${item.ai_enhance_requested ? 'AI' : 'Rule'}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {}
+        }
+
+        window.viewAnalysis = async function(id) {
+            try {
+                const resp = await fetch('/api/analyses/' + id);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                currentAnalysis = data;
+                renderResults(data);
+                switchView('analyze');
+                show($('#results'));
+            } catch (e) {}
+        };
+
+        // ========================
+        // Settings
+        // ========================
+        async function loadSettings() {
+            try {
+                const resp = await fetch('/api/billing/quota');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                $('#settings-plan').textContent = data.plan;
+                $('#settings-analyses').textContent = `${data.analyses.used} / ${data.analyses.limit}`;
+                $('#settings-ai').textContent = `${data.ai_enhancements.used} / ${data.ai_enhancements.limit}`;
+                $('#settings-exports').textContent = `${data.exports.used} / ${data.exports.limit}`;
+            } catch (e) {}
+        }
+
+        // ========================
+        // PayPal subscription
+        // ========================
+        window.subscribePaypal = async function(plan) {
+            try {
+                const resp = await fetch('/api/billing/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan: plan })
+                });
+
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    showError('Subscription failed', data.error?.message || 'Could not create PayPal subscription.');
+                    return;
+                }
+
+                const data = await resp.json();
+                if (data.approval_url) {
+                    // Redirect to PayPal for approval
+                    window.location.href = data.approval_url;
+                } else {
+                    showError('Subscription failed', 'No approval URL returned from PayPal.');
+                }
+            } catch (e) {
+                showError('Subscription failed', 'An error occurred while connecting to PayPal.');
+            }
+        };
+
+        window.cancelSubscription = async function() {
+            if (!confirm('Are you sure you want to cancel your subscription? You will lose access to premium features at the end of your billing period.')) {
                 return;
             }
 
-            const data = currentAnalysisResult;
-            const prd = data.prd;
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-
-            let markdown = `# ${prd.title}\n\n`;
-            markdown += `**Version:** ${prd.version}  \n`;
-            markdown += `**Generated:** ${new Date().toLocaleString()}  \n`;
-            markdown += `**Domain:** ${data.domain}  \n`;
-            markdown += `**RMS Score:** ${data.rms}/100  \n\n`;
-            markdown += `---\n\n`;
-            markdown += `## 📋 Overview\n\n`;
-            markdown += `${prd.overview.summary}\n\n`;
-            markdown += `- **Project Type:** ${prd.overview.project_type}\n`;
-            markdown += `- **Target Users:** ${prd.overview.target_users.join(', ')}\n\n`;
-
-            if (prd.technical_constraints.tech_stack) {
-                markdown += `## 🛠️ Recommended Tech Stack\n\n`;
-                markdown += `${prd.technical_constraints.tech_stack}\n\n`;
-            }
-
-            markdown += `## ✅ In Scope\n\n`;
-            prd.scope.in_scope.forEach(item => {
-                markdown += `- ${item}\n`;
-            });
-            markdown += `\n`;
-
-            markdown += `## ❌ Out of Scope\n\n`;
-            prd.scope.out_of_scope.forEach(item => {
-                markdown += `- ${item}\n`;
-            });
-            markdown += `\n`;
-
-            if (data.missing_features && data.missing_features.length > 0) {
-                markdown += `## 🚨 Missing Features (Negative Scope Detection™)\n\n`;
-                markdown += `*These features weren't mentioned but are likely needed:*\n\n`;
-                data.missing_features.forEach(feature => {
-                    markdown += `- ${feature}\n`;
+            try {
+                const resp = await fetch('/api/billing/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: 'Cancelled via settings' })
                 });
-                markdown += `\n`;
-            }
 
-            markdown += `## 📋 Functional Requirements\n\n`;
-            prd.functional_requirements.forEach(req => {
-                markdown += `- ${req}\n`;
-            });
-            markdown += `\n`;
-
-            markdown += `## 🔧 Non-Functional Requirements\n\n`;
-            markdown += `- **Performance:** ${prd.non_functional.performance}\n`;
-            markdown += `- **Security:** ${prd.non_functional.security}\n`;
-            markdown += `- **Scalability:** ${prd.non_functional.scalability}\n`;
-            markdown += `- **Reliability:** ${prd.non_functional.reliability}\n\n`;
-
-            if (data.clarification_questions && data.clarification_questions.length > 0) {
-                markdown += `## ❓ Clarification Questions\n\n`;
-                data.clarification_questions.forEach((q, i) => {
-                    markdown += `${i + 1}. ${q}\n`;
-                });
-                markdown += `\n`;
-            }
-
-            if (data.conflicts && data.conflicts.length > 0) {
-                markdown += `## ⚠️ Stakeholder Conflicts\n\n`;
-                data.conflicts.forEach(conflict => {
-                    markdown += `- ${conflict}\n`;
-                });
-                markdown += `\n`;
-            }
-
-            markdown += `## ⚡ Risks\n\n`;
-            prd.risks.forEach(risk => {
-                markdown += `- ${risk}\n`;
-            });
-            markdown += `\n`;
-
-            markdown += `## ⏱️ Timeline Estimate\n\n`;
-            markdown += `${prd.technical_constraints.timeline}\n\n`;
-            markdown += `## 📝 Next Steps\n\n`;
-            prd.next_steps.forEach((step, i) => {
-                markdown += `${i + 1}. ${step}\n`;
-            });
-            markdown += `\n`;
-
-            if (data.ai_enhanced && data.ai_enhanced.status === 'success' && data.ai_enhanced.data) {
-                const aiData = data.ai_enhanced.data;
-                markdown += `---\n\n`;
-                markdown += `## 🤖 AI Enhancement (MiniMax)\n\n`;
-
-                if (aiData.estimated_timeline) {
-                    markdown += `### Timeline\n\n${aiData.estimated_timeline}\n\n`;
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    showError('Cancellation failed', data.error?.message || 'Could not cancel subscription.');
+                    return;
                 }
 
-                if (aiData.risk_factors && aiData.risk_factors.length > 0) {
-                    markdown += `### Risk Factors\n\n`;
-                    aiData.risk_factors.forEach(risk => {
-                        markdown += `- ${risk}\n`;
-                    });
-                    markdown += `\n`;
+                alert('Your subscription has been cancelled. You will retain access until the end of your billing period.');
+                loadSettings();
+            } catch (e) {
+                showError('Cancellation failed', 'An error occurred while cancelling.');
+            }
+        };
+
+        // ========================
+        // Data rights
+        // ========================
+        window.exportMyData = async function() {
+            try {
+                const resp = await fetch('/api/legal/data-export', { method: 'POST' });
+                if (!resp.ok) { showError('Export failed', 'Could not generate your data export. Please try again.'); return; }
+                const data = await resp.json();
+                const blob = new Blob([JSON.stringify(data.export, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'specforge-data-export.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                showError('Export failed', 'An error occurred while exporting your data.');
+            }
+        };
+
+        window.confirmDataDeletion = function() {
+            if (confirm('This will permanently delete ALL your data (analyses, exports, history). This cannot be undone.\n\nType OK in the next prompt to confirm.')) {
+                const input = prompt('Type DELETE_MY_DATA to confirm:');
+                if (input === 'DELETE_MY_DATA') {
+                    deleteMyData();
                 }
             }
+        };
 
-            markdown += `---\n\n`;
-            markdown += `*Generated by SpecForge - AI Requirement Expansion Platform*\n`;
+        async function deleteMyData() {
+            try {
+                const resp = await fetch('/api/legal/data-deletion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ confirm: 'DELETE_MY_DATA' })
+                });
+                if (!resp.ok) { showError('Deletion failed', 'Could not delete your data. Please try again.'); return; }
+                alert('Your data has been deleted. You will be redirected.');
+                window.location.href = '/';
+            } catch (e) {
+                showError('Deletion failed', 'An error occurred.');
+            }
+        }
 
-            const blob = new Blob([markdown], { type: 'text/markdown' });
+        // ========================
+        // Server-side export
+        // ========================
+        window.serverExport = async function(format) {
+            if (!currentAnalysis) {
+                showError('No analysis', 'Please analyze requirements before exporting.');
+                return;
+            }
+            const analysisId = currentAnalysis.analysis_id;
+            if (!analysisId) {
+                showError('No analysis ID', 'This analysis was generated before exports were available.');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/exports', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ analysis_id: analysisId, format: format })
+                });
+
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    if (resp.status === 429 && data.error?.code === 'quota_exceeded') {
+                        $('#quota-warning-text').textContent = `Export limit reached (${data.error.current}/${data.error.limit}) on '${data.error.plan}' plan.`;
+                        show($('#quota-warning'));
+                        return;
+                    }
+                    showError('Export failed', data.error?.message || 'Could not generate export.');
+                    return;
+                }
+
+                const data = await resp.json();
+                // Trigger download
+                const dlResp = await fetch('/api/exports/' + data.export_id + '/download');
+                const blob = await dlResp.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = data.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                showError('Export failed', 'An error occurred during export.');
+            }
+        };
+
+        // ========================
+        // Client-side PRD download (fallback)
+        // ========================
+        window.downloadPRD = function() {
+            if (!currentAnalysis) {
+                showError('No analysis', 'Please analyze requirements before downloading.');
+                return;
+            }
+            const data = currentAnalysis;
+            const prd = data.prd || {};
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+
+            let md = `# ${prd.title || 'Project Specification'}\n\n`;
+            md += `**Version:** ${prd.version || '1.0'}  \n**Domain:** ${data.domain}  \n**RMS:** ${data.rms}/100  \n**Generated:** ${new Date().toLocaleString()}\n\n---\n\n`;
+            md += `## Overview\n\n${prd.overview?.summary || ''}\n\n`;
+            md += `- **Type:** ${prd.overview?.project_type || ''}\n- **Users:** ${(prd.overview?.target_users || []).join(', ')}\n\n`;
+
+            if (prd.scope) {
+                md += `## In Scope\n\n${(prd.scope.in_scope || []).map(s => `- ${s}`).join('\n')}\n\n`;
+                md += `## Out of Scope\n\n${(prd.scope.out_of_scope || []).map(s => `- ${s}`).join('\n')}\n\n`;
+            }
+
+            md += `## Functional Requirements\n\n${(prd.functional_requirements || []).map((r, i) => `${i + 1}. ${r}`).join('\n')}\n\n`;
+
+            if (data.missing_features?.length) {
+                md += `## Missing Features\n\n${data.missing_features.map(f => `- [ ] ${f}`).join('\n')}\n\n`;
+            }
+
+            if (data.clarification_questions?.length) {
+                md += `## Clarification Questions\n\n${data.clarification_questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}\n\n`;
+            }
+
+            if (data.conflicts?.length) {
+                md += `## Conflicts\n\n${data.conflicts.map(c => `> ⚠ ${c}`).join('\n')}\n\n`;
+            }
+
+            md += `## Risks\n\n${(prd.risks || []).map(r => `- ${r}`).join('\n')}\n\n`;
+            md += `---\n*Generated by SpecForge*\n`;
+
+            const blob = new Blob([md], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `specforge-prd-${timestamp}.md`;
+            a.download = `prd-${data.domain}-${ts}.md`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        }
+        };
+
+        // ========================
+        // Keyboard shortcut
+        // ========================
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + Enter to analyze
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (!$('#analyze-btn').disabled) analyze();
+            }
+        });
+
+        // ========================
+        // Init
+        // ========================
+        $('#footer-year').textContent = new Date().getFullYear();
+        checkAuth();
+        checkQuota();
+
+    })();
     </script>
 </body>
 </html>

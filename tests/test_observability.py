@@ -4,10 +4,13 @@ import logging
 import os
 import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from specforge import create_app
 from specforge.extensions import db
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestConfig:
@@ -36,7 +39,7 @@ class ObservabilityTests(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
         db_path = os.path.join(self.tempdir.name, "specforge-observability.db")
-        migrations_dir = os.path.join("/home/kali/.openclaw/workspace/specforge-mvp", "migrations")
+        migrations_dir = str(REPO_ROOT / "migrations")
 
         class _Config(TestConfig):
             SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"
@@ -99,17 +102,22 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual(body["summary"]["database"], "down")
 
     def test_request_logging_is_structured_json(self):
+        # Clean up the original app's DB connection before creating a new one
+        with self.app.app_context():
+            db.session.remove()
+            db.engine.dispose()
+
         stream = io.StringIO()
         handler = logging.StreamHandler(stream)
         root_logger = logging.getLogger()
         previous_handlers = list(root_logger.handlers)
         root_logger.handlers = [handler]
         try:
-            self.app = create_app(type("Config", (TestConfig,), {
+            new_app = create_app(type("Config", (TestConfig,), {
                 "SQLALCHEMY_DATABASE_URI": f"sqlite:///{os.path.join(self.tempdir.name, 'structured.db')}",
-                "MIGRATIONS_DIR": os.path.join("/home/kali/.openclaw/workspace/specforge-mvp", "migrations"),
+                "MIGRATIONS_DIR": str(REPO_ROOT / "migrations"),
             }))
-            client = self.app.test_client()
+            client = new_app.test_client()
             client.get("/health")
             log_output = stream.getvalue().strip().splitlines()[-1]
             payload = json.loads(log_output)
@@ -120,6 +128,9 @@ class ObservabilityTests(unittest.TestCase):
             self.assertIn("duration_ms", payload)
         finally:
             root_logger.handlers = previous_handlers
+            with new_app.app_context():
+                db.session.remove()
+                db.engine.dispose()
 
 
 if __name__ == "__main__":
