@@ -39,6 +39,17 @@ def get_analysis_record(analysis_id, workspace_id):
     return AnalysisRecord.query.filter_by(id=analysis_id, workspace_id=workspace_id).one_or_none()
 
 
+def update_analysis_record(record, ai_enhanced, prd_json_dict=None, answers_dict=None):
+    if ai_enhanced is not None:
+        record.ai_enhanced_json = _serialize(ai_enhanced)
+    if prd_json_dict is not None:
+        record.prd_json = _serialize(prd_json_dict)
+    if answers_dict is not None:
+        record.answers_json = _serialize(answers_dict)
+    db.session.commit()
+    return record
+
+
 def list_analysis_records(workspace_id, limit=20, offset=0):
     return (
         AnalysisRecord.query.filter_by(workspace_id=workspace_id)
@@ -72,4 +83,5 @@ def analysis_record_to_payload(record):
         "conflicts": _deserialize(record.conflicts_json, []),
         "prd": _deserialize(record.prd_json, {}),
         "ai_enhanced": _deserialize(record.ai_enhanced_json, None),
+        "answers": _deserialize(getattr(record, "answers_json", None), {}),
     }

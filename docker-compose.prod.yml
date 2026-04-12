@@ -56,6 +56,8 @@ services:
       RATE_LIMIT_ANALYZE: ${RATE_LIMIT_ANALYZE:-20}
       RATE_LIMIT_MINIMAX_CHAT: ${RATE_LIMIT_MINIMAX_CHAT:-10}
       RATE_LIMIT_MINIMAX_ENHANCE: ${RATE_LIMIT_MINIMAX_ENHANCE:-10}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
     ports:
       - "127.0.0.1:5000:5000"  # Bind to localhost; use reverse proxy for TLS
     depends_on:
@@ -88,6 +90,9 @@ services:
       MINIMAX_API_KEY: ${MINIMAX_API_KEY}
       MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      QUOTA_ENFORCEMENT: ${QUOTA_ENFORCEMENT:-strict}
     depends_on:
       postgres:
         condition: service_healthy

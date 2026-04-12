@@ -44,7 +44,7 @@ PLANS: dict[str, PlanLimits] = {
         exports_per_month=5,
         max_workspace_members=1,
         share_link_max_age_days=3,
-        ai_providers=("minimax",),
+        ai_providers=("minimax", "openrouter"),
     ),
     "pro": PlanLimits(
         analyses_per_month=100,
@@ -52,7 +52,7 @@ PLANS: dict[str, PlanLimits] = {
         exports_per_month=50,
         max_workspace_members=10,
         share_link_max_age_days=30,
-        ai_providers=("minimax",),
+        ai_providers=("minimax", "openrouter"),
         priority_queue=True,
     ),
     "enterprise": PlanLimits(
@@ -61,7 +61,7 @@ PLANS: dict[str, PlanLimits] = {
         exports_per_month=999999,
         max_workspace_members=999,
         share_link_max_age_days=365,
-        ai_providers=("minimax",),
+        ai_providers=("minimax", "openrouter"),
         priority_queue=True,
     ),
 }
@@ -213,7 +213,14 @@ def get_quota_status(workspace_id: str, plan: Optional[str] = None) -> dict[str,
 
 
 def check_provider_allowed(workspace_id: str, provider: str, plan: Optional[str] = None) -> bool:
-    """Check whether the workspace's plan allows the given AI provider."""
+    """Check whether the workspace's plan allows the given AI provider.
+
+    When QUOTA_ENFORCEMENT is set to 'off', all providers are allowed
+    regardless of plan — useful for local testing.
+    """
+    from flask import current_app
+    if current_app.config.get("QUOTA_ENFORCEMENT", "strict") == "off":
+        return True
     if plan is None:
         plan = get_workspace_plan(workspace_id)
     limits = get_plan_limits(plan)

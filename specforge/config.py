@@ -51,6 +51,9 @@ class Config:
     MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
     MINIMAX_MODEL = "MiniMax-M2.5"
 
+    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+
     # Feature flags
     AI_ENHANCEMENT_ENABLED = os.environ.get("AI_ENHANCEMENT_ENABLED", "true").lower() == "true"
     MINIMAX_OAUTH_ENABLED = os.environ.get("MINIMAX_OAUTH_ENABLED", "false").lower() == "true"

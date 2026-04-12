@@ -141,9 +141,20 @@
                 <!-- Input Card -->
                 <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div class="p-5 md:p-6">
-                        <label for="requirements" class="block text-sm font-semibold text-gray-700 mb-2">
-                            Requirements Brief
-                        </label>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="requirements" class="block text-sm font-semibold text-gray-700">
+                                Requirements Brief
+                            </label>
+                            <button
+                                id="generate-brief-btn"
+                                onclick="openBriefModal()"
+                                type="button"
+                                class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 px-3 py-1.5 rounded-lg transition"
+                            >
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                Generate Brief
+                            </button>
+                        </div>
                         <textarea
                             id="requirements"
                             rows="5"
@@ -168,6 +179,7 @@
                                 <label for="ai-provider" class="text-xs text-gray-500">Provider:</label>
                                 <select id="ai-provider" class="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white focus:ring-2 focus:ring-brand-500 outline-none">
                                     <option value="minimax">MiniMax</option>
+                                    <option value="openrouter">OpenRouter</option>
                                 </select>
                             </div>
                         </div>
@@ -187,6 +199,67 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             Analyze
                         </button>
+                    </div>
+                </div>
+
+                <!-- Generate Brief Modal -->
+                <div id="brief-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="brief-modal-title">
+                    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeBriefModal()"></div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-auto p-6 fade-in">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                </div>
+                                <h2 id="brief-modal-title" class="text-base font-semibold text-gray-900">Generate Project Brief</h2>
+                            </div>
+                            <button onclick="closeBriefModal()" class="text-gray-400 hover:text-gray-600" aria-label="Close">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Project Name <span class="text-red-500">*</span></label>
+                                <input id="brief-project-name" type="text" placeholder="e.g. TaskFlow, BakeryShop, MediTrack" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Project Type</label>
+                                <select id="brief-project-type" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 outline-none">
+                                    <option>Web Application</option>
+                                    <option>Mobile App (iOS/Android)</option>
+                                    <option>SaaS Platform</option>
+                                    <option>E-Commerce Store</option>
+                                    <option>API / Backend Service</option>
+                                    <option>Internal Tool / Dashboard</option>
+                                    <option>Marketplace</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Core Idea <span class="text-red-500">*</span></label>
+                                <textarea id="brief-core-idea" rows="3" placeholder="Describe what the product does in 1-3 sentences..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Target Audience</label>
+                                <input id="brief-target-audience" type="text" placeholder="e.g. Small business owners, students, healthcare workers" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Key Features <span class="text-gray-400">(comma-separated)</span></label>
+                                <input id="brief-key-features" type="text" placeholder="e.g. user login, payment processing, admin dashboard, notifications" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" />
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex items-center justify-between gap-3">
+                            <p class="text-xs text-gray-400">Uses your selected AI provider</p>
+                            <div class="flex gap-2">
+                                <button onclick="closeBriefModal()" type="button" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium rounded-lg hover:bg-gray-100 transition">Cancel</button>
+                                <button id="brief-generate-btn" onclick="generateBrief()" type="button" class="px-5 py-2 text-sm font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition disabled:opacity-50 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                                    Generate
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -601,6 +674,119 @@
 
                 const data = await resp.json();
 
+                if (!resp.ok && resp.status !== 202) {
+                    handleApiError(resp.status, data);
+                    hide($('#loading'));
+                    $('#analyze-btn').disabled = false;
+                    return;
+                }
+
+                if (resp.status === 202) {
+                    pollJob(data.job_id);
+                } else {
+                    currentAnalysis = data;
+                    renderResults(data);
+                    hide($('#loading'));
+                    show($('#results'));
+                    $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    $('#analyze-btn').disabled = false;
+                }
+
+            } catch (error) {
+                showError('Network error', 'Could not reach the server. Please check your connection and try again.');
+                hide($('#loading'));
+                $('#analyze-btn').disabled = false;
+            }
+        };
+
+        async function pollJob(jobId) {
+            const maxPolls = 60;
+            let polls = 0;
+            
+            const pollInterval = setInterval(async () => {
+                polls++;
+                try {
+                    const resp = await fetch(`/api/jobs/${jobId}`);
+                    const data = await resp.json();
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        if (data.result) {
+                            currentAnalysis = data.result;
+                            renderResults(data.result);
+                            hide($('#loading'));
+                            show($('#results'));
+                            $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                            showError('Processing error', 'Job completed but no result found.');
+                            hide($('#loading'));
+                        }
+                        $('#analyze-btn').disabled = false;
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        showError('Analysis failed', data.error_message || 'The background job failed.');
+                        hide($('#loading'));
+                        $('#analyze-btn').disabled = false;
+                    } else if (polls >= maxPolls) {
+                        clearInterval(pollInterval);
+                        showError('Timeout', 'The analysis took too long to complete. Background workers may be unresponsive.');
+                        hide($('#loading'));
+                        $('#analyze-btn').disabled = false;
+                    }  // else keep polling
+                } catch (e) {
+                    clearInterval(pollInterval);
+                    showError('Network error', 'Lost connection while checking status.');
+                    hide($('#loading'));
+                    $('#analyze-btn').disabled = false;
+                }
+            }, 2000);
+        }
+
+        window.refinePRD = async function() {
+            if (!currentAnalysis || !currentAnalysis.analysis_id) {
+                showError('No analysis', 'Please run an analysis first.');
+                return;
+            }
+
+            const answers = {};
+            const form = $('#refine-form');
+            if (form) {
+                const inputs = form.querySelectorAll('textarea');
+                inputs.forEach((textarea, i) => {
+                    const qInput = form.querySelector(`input[name="question-${i}"]`);
+                    if (qInput && textarea.value.trim()) {
+                        answers[qInput.value] = textarea.value.trim();
+                    }
+                });
+            }
+
+            if (Object.keys(answers).length === 0) {
+                showError('Missing answers', 'Please answer at least one question to refine the PRD.');
+                return;
+            }
+
+            const aiProvider = $('#ai-provider').value;
+
+            hide($('#results'));
+            hide($('#error-banner'));
+            hide($('#quota-warning'));
+            show($('#loading'));
+            $('#loading-detail').textContent = 'Sending to AI provider for refinement...';
+            $('#analyze-btn').disabled = true;
+
+            try {
+                const resp = await fetch('/analyze/refine', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        analysis_id: currentAnalysis.analysis_id,
+                        answers: answers,
+                        ai_provider: aiProvider
+                    })
+                });
+
+                const data = await resp.json();
+
                 if (!resp.ok) {
                     handleApiError(resp.status, data);
                     hide($('#loading'));
@@ -613,8 +799,8 @@
                 hide($('#loading'));
                 show($('#results'));
 
-                // Scroll to results
-                $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Switch to PRD tab after refinement
+                switchTab('prd');
 
             } catch (error) {
                 showError('Network error', 'Could not reach the server. Please check your connection and try again.');
@@ -688,12 +874,31 @@
 
             // Questions
             const qEl = $('#questions');
-            qEl.innerHTML = (data.clarification_questions || []).map((q, i) =>
-                `<li class="flex items-start gap-3 text-sm text-gray-700 py-1.5">
-                    <span class="flex-shrink-0 w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-semibold" aria-hidden="true">${i + 1}</span>
-                    <span>${escapeHtml(q)}</span>
-                </li>`
-            ).join('') || '<p class="text-sm text-gray-400">No questions at this time</p>';
+            if (data.clarification_questions && data.clarification_questions.length > 0) {
+                let html = `<form id="refine-form" class="space-y-4" onsubmit="event.preventDefault(); refinePRD();">`;
+                html += data.clarification_questions.map((q, i) =>
+                    `<div class="flex flex-col gap-2">
+                        <div class="flex items-start gap-3 text-sm text-gray-700">
+                            <span class="flex-shrink-0 w-6 h-6 bg-brand-100 text-brand-700 rounded-full flex items-center justify-center text-xs font-semibold" aria-hidden="true">${i + 1}</span>
+                            <label class="font-medium" for="qa-${i}">${escapeHtml(q)}</label>
+                            <input type="hidden" name="question-${i}" value="${escapeHtml(q)}">
+                        </div>
+                        <div class="pl-9">
+                            <textarea id="qa-${i}" name="answer-${i}" rows="2" class="w-full text-sm rounded-lg border-gray-300 border p-2 focus:ring-brand-500 focus:border-brand-500 resize-none placeholder-gray-400" placeholder="Your answer...">${data.answers && data.answers[q] ? escapeHtml(data.answers[q]) : ''}</textarea>
+                        </div>
+                    </div>`
+                ).join('');
+                html += `<div class="pl-9 pt-2">
+                            <button type="submit" id="refine-btn" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Refine PRD
+                            </button>
+                         </div>`;
+                html += `</form>`;
+                qEl.innerHTML = html;
+            } else {
+                qEl.innerHTML = '<p class="text-sm text-gray-400">No questions at this time</p>';
+            }
 
             // Conflicts
             if (data.conflicts && data.conflicts.length > 0) {
@@ -1074,6 +1279,90 @@
                 if (!$('#analyze-btn').disabled) analyze();
             }
         });
+
+        // ========================
+        // Generate Brief Modal
+        // ========================
+        window.openBriefModal = function() {
+            $('#brief-modal').classList.remove('hidden');
+            document.getElementById('brief-project-name').focus();
+        };
+
+        window.closeBriefModal = function() {
+            $('#brief-modal').classList.add('hidden');
+        };
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !$('#brief-modal').classList.contains('hidden')) {
+                closeBriefModal();
+            }
+        });
+
+        window.generateBrief = async function() {
+            const projectName   = document.getElementById('brief-project-name').value.trim();
+            const projectType   = document.getElementById('brief-project-type').value;
+            const coreIdea      = document.getElementById('brief-core-idea').value.trim();
+            const targetAudience = document.getElementById('brief-target-audience').value.trim();
+            const keyFeatures   = document.getElementById('brief-key-features').value.trim();
+            const aiProvider    = document.getElementById('ai-provider').value;
+
+            if (!projectName) {
+                document.getElementById('brief-project-name').focus();
+                return;
+            }
+            if (!coreIdea || coreIdea.length < 10) {
+                document.getElementById('brief-core-idea').focus();
+                return;
+            }
+
+            const btn = document.getElementById('brief-generate-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Generating...';
+
+            try {
+                const resp = await fetch('/api/generate-brief', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        project_name: projectName,
+                        project_type: projectType,
+                        core_idea: coreIdea,
+                        target_audience: targetAudience || 'General users',
+                        key_features: keyFeatures,
+                        ai_provider: aiProvider,
+                    }),
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok || !data.success) {
+                    const msg = data.error?.message || data.error || 'Brief generation failed.';
+                    showError('Generation failed', msg);
+                    return;
+                }
+
+                // Populate the requirements textarea and close the modal
+                document.getElementById('requirements').value = data.brief;
+                document.getElementById('requirements').dispatchEvent(new Event('input'));
+                closeBriefModal();
+
+                // Auto-enable AI Enhancement since the user clearly has it configured
+                document.getElementById('ai-enhance').checked = true;
+
+                // Clear the modal fields for next use
+                document.getElementById('brief-project-name').value = '';
+                document.getElementById('brief-core-idea').value = '';
+                document.getElementById('brief-target-audience').value = '';
+                document.getElementById('brief-key-features').value = '';
+
+            } catch (err) {
+                showError('Network error', 'Could not reach the server. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg> Generate';
+            }
+        };
 
         // ========================
         // Init

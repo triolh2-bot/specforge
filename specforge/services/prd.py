@@ -22,6 +22,7 @@ from .domain_analysis import (
 )
 from .prompt_manager import (
     PRD_ENHANCEMENT_SCHEMA,
+    PRD_REFINEMENT_SCHEMA,
     detect_prompt_injection,
     get_template,
     repair_output,
@@ -33,38 +34,66 @@ from .prompt_manager import (
 logger = logging.getLogger(__name__)
 
 
-def _build_enhance_prompt(
-    requirements: str,
-    domain: str,
-    missing_features: list[str],
-) -> str:
-    missing_features_text = "\n".join(f"- {feature}" for feature in missing_features) if missing_features else "None detected"
+def generate_brief(
+    project_name: str,
+    project_type: str,
+    core_idea: str,
+    target_audience: str,
+    key_features: str,
+    ai_provider: Optional[str] = None,
+) -> dict[str, Any]:
+    """Generate a plain-text project requirements brief using AI.
 
-    return (
-        f"Analyze the following software requirements and provide a structured enhancement analysis.\n\n"
-        f"REQUIREMENTS:\n{requirements}\n\n"
-        f"DETECTED DOMAIN: {domain}\n\n"
-        f"MISSING FEATURES DETECTED:\n{missing_features_text}\n\n"
-        f'Please provide a structured JSON response with the following fields:\n\n'
-        f'1. "prd_summary": A comprehensive 2-3 paragraph summary of the project that would serve as a PRD overview. '
-        f"Include the purpose, target users, and key value propositions.\n\n"
-        f'2. "clarification_questions": An array of exactly 5 smart, specific clarification questions '
-        f"tailored to these requirements. Questions should be actionable and help scope the project better.\n\n"
-        f'3. "tech_stack_recommendation": A recommended technology stack for the {domain} domain, '
-        f"including frontend, backend, database, and any specific frameworks/libraries.\n\n"
-        f'4. "risk_factors": An array of exactly 3 specific risk factors relevant to this particular project '
-        f"based on the requirements and domain.\n\n"
-        f'5. "estimated_timeline": A realistic development timeline estimate (e.g., "8-12 weeks", "3-4 months") '
-        f"with brief justification.\n\n"
-        f"Return ONLY valid JSON in this exact format:\n"
-        f"{{\n"
-        f'  "prd_summary": "string",\n'
-        f'  "clarification_questions": ["q1", "q2", "q3", "q4", "q5"],\n'
-        f'  "tech_stack_recommendation": "string",\n'
-        f'  "risk_factors": ["risk1", "risk2", "risk3"],\n'
-        f'  "estimated_timeline": "string"\n'
-        f"}}"
+    Returns a dict with ``success``, ``brief`` (the generated text), and
+    ``provider`` fields.
+    """
+    provider = registry.select(ai_provider)
+    if provider is None:
+        return {"success": False, "error": "No AI provider available. Please configure an API key."}
+
+    template = get_template("brief_generation")
+    if template is None:
+        return {"success": False, "error": "Brief generation template not registered."}
+
+    system_prompt, user_prompt = render_prompt(
+        template,
+        project_name=sanitize_requirements(project_name),
+        project_type=project_type,
+        core_idea=sanitize_requirements(core_idea),
+        target_audience=target_audience,
+        key_features=sanitize_requirements(key_features),
     )
+
+    messages = [
+        ChatMessage(role="system", content=system_prompt),
+        ChatMessage(role="user", content=user_prompt),
+    ]
+
+    try:
+        result = provider.chat_completion(messages, temperature=0.8, max_tokens=1500)
+    except Exception as exc:
+        logger.error("Brief generation failed: %s", exc)
+        return {"success": False, "error": str(exc)}
+
+    if not result.success:
+        return {"success": False, "error": result.error or "Provider returned an error."}
+
+    # The brief is plain text — extract from data or raw_content
+    data = result.data or {}
+    brief_text = data.get("raw_content") or ""
+    if not brief_text and isinstance(data, dict):
+        # Some models wrap in JSON anyway
+        brief_text = data.get("brief") or data.get("content") or str(data)
+
+    if not brief_text:
+        return {"success": False, "error": "AI returned an empty brief."}
+
+    return {
+        "success": True,
+        "brief": brief_text.strip(),
+        "provider": result.model or ai_provider or "unknown",
+    }
+
 
 
 def _call_provider(
@@ -106,7 +135,7 @@ def _call_provider(
         ChatMessage(role="user", content=user_prompt),
     ]
 
-    selected_model = model or "MiniMax-M2.5"
+    selected_model = model  # None lets each provider use its own configured default
 
     try:
         result = provider.chat_completion(
@@ -128,6 +157,95 @@ def _call_provider(
             result.data = repair_output(result.data, PRD_ENHANCEMENT_SCHEMA)
 
     return result
+
+
+def _call_refinement_provider(
+    requirements: str,
+    domain: str,
+    answers: dict[str, str],
+    provider_name: Optional[str] = None,
+    model: Optional[str] = None,
+) -> ProviderResponse:
+    provider = registry.select(provider_name)
+    if provider is None:
+        logger.warning("No AI provider available for refinement")
+        return ProviderResponse(success=False, error="Provider unavailable")
+
+    cleaned_requirements = sanitize_requirements(requirements)
+    qa_context = "\n\n".join([f"Q: {q}\nA: {a}" for q, a in answers.items()])
+
+    template = get_template("prd_refinement")
+    if template is None:
+        logger.error("PRD refinement template not registered")
+        return ProviderResponse(success=False, error="Prompt template not available")
+
+    system_prompt, user_prompt = render_prompt(
+        template,
+        requirements=cleaned_requirements,
+        domain=domain,
+        qa_context=qa_context,
+    )
+
+    messages = [
+        ChatMessage(role="system", content=system_prompt),
+        ChatMessage(role="user", content=user_prompt),
+    ]
+
+    selected_model = model  # None lets each provider use its own configured default
+
+    try:
+        result = provider.chat_completion(
+            messages,
+            model=selected_model,
+            temperature=0.7,
+            max_tokens=2000,
+        )
+    except Exception as exc:
+        logger.error("Provider '%s' chat failed: %s", provider.name, exc)
+        return ProviderResponse(success=False, error=str(exc), model=selected_model)
+
+    if result.success and result.data:
+        validation_errors = validate_output(result.data, PRD_REFINEMENT_SCHEMA)
+        if validation_errors:
+            logger.warning("AI refinement output validation errors: %s", validation_errors)
+            result.data = repair_output(result.data, PRD_REFINEMENT_SCHEMA)
+
+    return result
+
+
+def generate_refined_prd(
+    original_requirements: str,
+    domain: str,
+    answers: dict[str, str],
+    ai_provider: Optional[str] = None,
+    model: Optional[str] = None,
+) -> dict[str, Any]:
+    
+    result = _call_refinement_provider(original_requirements, domain, answers, provider_name=ai_provider, model=model)
+    
+    ai_enhanced = None
+    provider_result = None
+    
+    if result.success:
+        provider_result = result.data
+        ai_enhanced = {
+            "status": "success",
+            "provider": result.model or ai_provider or "minimax",
+            "model": result.model,
+            "data": provider_result,
+            "usage": result.usage,
+        }
+    else:
+        error_msg = result.error if result else "Provider unavailable"
+        logger.info("AI refinement failed (%s)", error_msg)
+        ai_enhanced = {
+            "status": "failed",
+            "provider": ai_provider or "minimax",
+            "message": "AI refinement failed.",
+            "error": error_msg,
+        }
+
+    return ai_enhanced
 
 
 def _get_provider_info_for_response() -> dict[str, Any]:

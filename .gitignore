@@ -7,3 +7,12 @@ env/
 .env
 security-report.json
 .pytest_cache/
+.idea/
+.vscode/
+.cursor/
+.qoder/
+*.egg-info/
+dist/
+build/
+htmlcov/
+backups/

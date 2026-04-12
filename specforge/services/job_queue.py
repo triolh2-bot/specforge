@@ -54,9 +54,23 @@ def process_next_job():
         raise
 
 
-def worker_loop(poll_interval=1.0, max_jobs=None):
+def worker_loop(poll_interval=1.0, max_jobs=None, shutdown_flag=None):
+    """Process queued jobs until *max_jobs* is reached or *shutdown_flag* is set.
+
+    Parameters
+    ----------
+    poll_interval:
+        Seconds to sleep when the queue is empty.
+    max_jobs:
+        Optional cap on jobs to process (useful for tests).
+    shutdown_flag:
+        Optional callable returning ``True`` when the worker should exit
+        after completing its current job.
+    """
     processed = 0
     while True:
+        if shutdown_flag and shutdown_flag():
+            return processed
         job = process_next_job()
         if job is None:
             if max_jobs is not None and processed >= max_jobs:

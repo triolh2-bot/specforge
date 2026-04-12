@@ -27,6 +27,40 @@ from .services.rbac import AuthorizationError
 from .validation import ValidationError
 
 
+def _csrf_origin_check():
+    """Block cross-origin state-mutating requests (CSRF mitigation).
+
+    Checks the Origin or Referer header against the server's own host.
+    Only applies to POST, PUT, PATCH, DELETE — safe methods are skipped.
+    """
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+
+    origin = request.headers.get("Origin") or ""
+    referer = request.headers.get("Referer") or ""
+    server_host = request.host  # e.g. "localhost:5000" or "specforge.dev"
+
+    # Allow if Origin matches
+    if origin:
+        from urllib.parse import urlparse
+        parsed = urlparse(origin)
+        if parsed.netloc == server_host:
+            return None
+    # Fall back to Referer
+    elif referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        if parsed.netloc == server_host:
+            return None
+
+    # If neither header is present (e.g. same-origin form post from some browsers),
+    # allow it — browsers always send at least one for cross-origin requests.
+    if not origin and not referer:
+        return None
+
+    return error_response("Cross-origin request blocked", status=403, code="csrf_rejected")
+
+
 def create_app(config_class=Config):
     app = Flask(__name__, template_folder="templates")
     app.config.from_object(config_class)
@@ -38,14 +72,14 @@ def create_app(config_class=Config):
 
     db.init_app(app)
     # Reset and re-register providers for each app instance (test isolation)
-    registry._providers.clear()
-    registry._fallback_order.clear()
+    registry.reset()
     register_builtin_providers()
     register_builtin_templates()
     app.before_request(assign_request_id)
     app.before_request(before_request_observer)
     app.before_request(assign_rate_limit_client_id)
     app.before_request(enforce_content_length)
+    app.before_request(_csrf_origin_check)
     app.after_request(attach_request_id)
     app.after_request(after_request_observer)
     register_error_handlers(app, logger)

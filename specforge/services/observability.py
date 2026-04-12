@@ -88,23 +88,23 @@ def configure_logging(app):
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
-    has_json_formatter = False
-    for handler in root_logger.handlers:
+    # Prevent duplicate handlers: remove all existing, add exactly one JSON handler.
+    json_handler = None
+    for handler in list(root_logger.handlers):
         if isinstance(handler.formatter, JsonFormatter):
-            has_json_formatter = True
+            json_handler = handler
         else:
-            handler.setFormatter(JsonFormatter())
-            has_json_formatter = True
+            root_logger.removeHandler(handler)
 
-    if not root_logger.handlers:
-        handler = logging.StreamHandler()
-        handler.setFormatter(JsonFormatter())
-        root_logger.addHandler(handler)
-        has_json_formatter = True
+    if json_handler is None:
+        json_handler = logging.StreamHandler()
+        json_handler.setFormatter(JsonFormatter())
+        root_logger.addHandler(json_handler)
 
-    if has_json_formatter:
-        app.logger.handlers = root_logger.handlers
-        app.logger.setLevel(level)
+    # Prevent Flask's logger from double-emitting through the root logger
+    app.logger.handlers = []
+    app.logger.propagate = True
+    app.logger.setLevel(level)
 
 
 def before_request_observer():

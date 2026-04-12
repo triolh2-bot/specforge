@@ -30,6 +30,9 @@ services:
       MINIMAX_REDIRECT_URI: "${MINIMAX_REDIRECT_URI:-}"
       MINIMAX_API_KEY: "${MINIMAX_API_KEY:-}"
       MINIMAX_GROUP_ID: "${MINIMAX_GROUP_ID:-}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-openai/gpt-4o-mini}"
+      QUOTA_ENFORCEMENT: "${QUOTA_ENFORCEMENT:-strict}"
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +58,9 @@ services:
       MINIMAX_REDIRECT_URI: "${MINIMAX_REDIRECT_URI:-}"
       MINIMAX_API_KEY: "${MINIMAX_API_KEY:-}"
       MINIMAX_GROUP_ID: "${MINIMAX_GROUP_ID:-}"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-openai/gpt-4o-mini}"
+      QUOTA_ENFORCEMENT: "${QUOTA_ENFORCEMENT:-strict}"
     depends_on:
       postgres:
         condition: service_healthy

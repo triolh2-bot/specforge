@@ -30,6 +30,7 @@ class AnalysisRecord(db.Model):
     conflicts_json = db.Column(db.Text, nullable=False)
     prd_json = db.Column(db.Text, nullable=False)
     ai_enhanced_json = db.Column(db.Text, nullable=True)
+    answers_json = db.Column(db.Text, nullable=True)
 
 
 class AnalysisJob(db.Model):

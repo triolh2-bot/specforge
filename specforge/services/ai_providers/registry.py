@@ -31,6 +31,11 @@ class _ProviderRegistry:
         if name in self._fallback_order:
             self._fallback_order.remove(name)
 
+    def reset(self) -> None:
+        """Remove all registered providers.  Used during app init for test isolation."""
+        self._providers.clear()
+        self._fallback_order.clear()
+
     # -- lookup -------------------------------------------------------------
 
     def get(self, name: str) -> Optional[AIProvider]:

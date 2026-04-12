@@ -4,6 +4,7 @@ from ..repositories.analysis_repository import (
     create_analysis_record,
     get_analysis_record,
     list_analysis_records,
+    update_analysis_record,
 )
 def persist_analysis(requirements, ai_enhance, ai_provider, result, workspace_id, request_id=None):
     record = create_analysis_record(
@@ -20,6 +21,14 @@ def persist_analysis(requirements, ai_enhance, ai_provider, result, workspace_id
     result["created_at"] = stored["created_at"]
     result["updated_at"] = stored["updated_at"]
     return result
+
+
+def refine_analysis_record(analysis_id, workspace_id, result_ai_enhanced, new_prd, answers):
+    record = get_analysis_record(analysis_id, workspace_id)
+    if not record:
+        return None
+    record = update_analysis_record(record, result_ai_enhanced, new_prd, answers)
+    return analysis_record_to_payload(record)
 
 
 def fetch_analysis(analysis_id, workspace_id):

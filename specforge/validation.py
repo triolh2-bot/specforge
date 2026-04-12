@@ -33,7 +33,25 @@ def validate_analyze_request() -> AnalyzeRequest:
     return {
         "requirements": require_string(data, "requirements", min_length=10, max_length=10000),
         "ai_enhance": optional_bool(data, "ai_enhance", default=False),
-        "ai_provider": optional_string(data, "ai_provider", default="minimax", allowed_values={"minimax"}),
+        "ai_provider": optional_string(data, "ai_provider", default="minimax", allowed_values={"minimax", "openrouter"}),
+    }
+
+
+def validate_refine_request() -> dict:
+    data = parse_json_object()
+    answers = data.get("answers")
+    if not isinstance(answers, dict):
+        raise ValidationError("'answers' must be a JSON object", code="invalid_field_type", details={"field": "answers"})
+    
+    # Filter empty answers
+    valid_answers = {k: v for k, v in answers.items() if isinstance(v, str) and v.strip()}
+    if not valid_answers:
+        raise ValidationError("At least one answer must be provided", code="missing_answers")
+
+    return {
+        "analysis_id": require_string(data, "analysis_id", min_length=36, max_length=36),
+        "answers": valid_answers,
+        "ai_provider": optional_string(data, "ai_provider", default="minimax", allowed_values={"minimax", "openrouter"}),
     }
 
 

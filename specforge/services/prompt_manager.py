@@ -115,15 +115,92 @@ REQUIREMENT_ENHANCE_V1 = PromptTemplate(
 )
 
 
+PRD_REFINEMENT_V1 = PromptTemplate(
+    name="prd_refinement",
+    version="1.0",
+    system_prompt=(
+        "You are an expert software architect and product manager. "
+        "Provide structured, actionable analysis in valid JSON format only. "
+        "Do NOT include any commentary outside the JSON object."
+    ),
+    user_template=(
+        "Refine the PRD based on the original requirements and the user's answers to clarification questions.\n\n"
+        "ORIGINAL REQUIREMENTS:\n{requirements}\n\n"
+        "DETECTED DOMAIN: {domain}\n\n"
+        "CLARIFICATION Q&A:\n{qa_context}\n\n"
+        'Please provide a structured JSON response with the following fields:\n\n'
+        '1. "prd_summary": A comprehensive 2-3 paragraph summary of the project that serves as a refined PRD overview. '
+        "Integrate insights from the Q&A context.\n\n"
+        '2. "tech_stack_recommendation": A recommended technology stack for the {domain} domain, tailored to the Q&A constraints.\n\n'
+        '3. "risk_factors": An array of exactly 3 specific risk factors relevant to this finalized scope.\n\n'
+        '4. "estimated_timeline": A realistic development timeline estimate based on the final scope.\n\n'
+        "Return ONLY valid JSON in this exact format:\n"
+        "{{\n"
+        '  "prd_summary": "string",\n'
+        '  "tech_stack_recommendation": "string",\n'
+        '  "risk_factors": ["risk1", "risk2", "risk3"],\n'
+        '  "estimated_timeline": "string"\n'
+        "}}"
+    ),
+)
+
+
+BRIEF_GENERATION_V1 = PromptTemplate(
+    name="brief_generation",
+    version="1.0",
+    system_prompt=(
+        "You are an expert product manager and technical writer. "
+        "Your job is to write detailed, professional software project requirements briefs. "
+        "Return ONLY a plain text requirements brief — no JSON, no markdown headers, no bullet-list preamble. "
+        "Write it as a well-structured professional paragraph description a developer can act on."
+    ),
+    user_template=(
+        "Generate a detailed requirements brief for the following project idea.\n\n"
+        "Project Name: {project_name}\n"
+        "Project Type: {project_type}\n"
+        "Core Idea: {core_idea}\n"
+        "Target Audience: {target_audience}\n"
+        "Key Features: {key_features}\n\n"
+        "Write a comprehensive 3-5 paragraph requirements brief that covers:\n"
+        "1. The overall purpose and goals of the project\n"
+        "2. The target audience and their needs\n"
+        "3. Core features and functionality in detail\n"
+        "4. Technical requirements and integrations (authentication, payments, APIs, etc.)\n"
+        "5. Admin/management capabilities needed\n\n"
+        "Write the brief as flowing professional paragraphs (not bullet points). "
+        "Be specific, concrete, and actionable. A developer should be able to start "
+        "building from this brief alone."
+    ),
+)
+
+
 def register_builtin_templates() -> None:
     """Register all built-in prompt templates."""
-    for template in (PRD_ENHANCEMENT_V1, REQUIREMENT_ENHANCE_V1):
+    for template in (PRD_ENHANCEMENT_V1, REQUIREMENT_ENHANCE_V1, PRD_REFINEMENT_V1, BRIEF_GENERATION_V1):
         register_template(template)
 
 
 # ---------------------------------------------------------------------------
 # Output schema validation
 # ---------------------------------------------------------------------------
+
+# JSON schema for the PRD refinement response
+PRD_REFINEMENT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["prd_summary"],
+    "properties": {
+        "prd_summary": {"type": "string", "minLength": 10, "maxLength": 5000},
+        "tech_stack_recommendation": {"type": "string", "maxLength": 2000},
+        "risk_factors": {
+            "type": "array",
+            "items": {"type": "string", "maxLength": 500},
+            "maxItems": 10,
+        },
+        "estimated_timeline": {"type": "string", "maxLength": 200},
+    },
+    "additionalProperties": True,
+}
+
 
 # JSON schema for the PRD enhancement response
 PRD_ENHANCEMENT_SCHEMA: dict[str, Any] = {
