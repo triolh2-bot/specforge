@@ -5,6 +5,7 @@
 Require these workflows to pass before merge:
 - `CI / lint`
 - `CI / test`
+- `CI / smoke`
 - `CI / build`
 - `Security / security`
 
@@ -14,6 +15,7 @@ Branch protection should require those checks on `main` and block direct pushes 
 
 - Python syntax over `app.py`, `specforge/`, and `tests/`
 - full backend test suite
+- end-to-end smoke flow for the main app journey
 - security scanning from `security.yml`
 - container image build and artifact export
 

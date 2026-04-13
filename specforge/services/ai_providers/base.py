@@ -75,12 +75,12 @@ class AIProvider(abc.ABC):
     @property
     @abc.abstractmethod
     def name(self) -> str:
-        """Unique provider identifier, e.g. ``"minimax"``."""
+        """Unique provider identifier, e.g. ``"openrouter"``."""
 
     @property
     @abc.abstractmethod
     def display_name(self) -> str:
-        """Human-readable name, e.g. ``"MiniMax AI"``."""
+        """Human-readable name, e.g. ``"OpenRouter"``."""
 
     @property
     @abc.abstractmethod

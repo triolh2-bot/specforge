@@ -133,10 +133,10 @@ server {
 
 ```bash
 #!/bin/bash
-# scripts/backup.sh
+# scripts/backup_postgres.sh
 DATE=$(date +%Y%m%d_%H%M%S)
 BACKUP_DIR="/backups"
-pg_dump -h postgres -U specforge specforge | gzip > "${BACKUP_DIR}/specforge_${DATE}.sql.gz"
+pg_dump "$DATABASE_URL" | gzip > "${BACKUP_DIR}/specforge_${DATE}.sql.gz"
 
 # Retain only last 7 days of backups
 find "${BACKUP_DIR}" -name "specforge_*.sql.gz" -mtime +7 -delete
@@ -155,12 +155,15 @@ Required variables (set via `.env.prod` or secret manager):
 | `DB_PASSWORD` | Database password | `openssl rand -hex 32` |
 | `SECRET_KEY` | Flask secret key | `openssl rand -hex 32` |
 | `TOKEN_ENCRYPTION_SECRET` | Fernet encryption key | `openssl rand -hex 32` |
-| `MINIMAX_CLIENT_ID` | OAuth client ID | From MiniMax console |
-| `MINIMAX_CLIENT_SECRET` | OAuth client secret | From MiniMax console |
-| `MINIMAX_REDIRECT_URI` | OAuth callback URL | `https://specforge.dev/auth/minimax/callback` |
-| `MINIMAX_API_KEY` | API key for AI calls | From MiniMax console |
-| `MINIMAX_GROUP_ID` | API group ID | From MiniMax console |
+| `OPENROUTER_API_KEY` | OpenRouter API key | From OpenRouter |
+| `OPENROUTER_MODEL` | OpenRouter model | `openai/gpt-4o-mini` |
+| `OPENROUTER_SITE_URL` | HTTP-Referer for OpenRouter | `https://specforge.dev` |
 | `APP_VERSION` | Application version | `git rev-parse --short HEAD` |
+
+## Worker Configuration Reloads
+
+The worker process reads environment variables at startup. If you change `.env` or secret values (API keys, model, quotas),
+restart the worker container or process to pick up new configuration.
 
 ## Monitoring & Alerting
 

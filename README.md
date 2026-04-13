@@ -137,9 +137,9 @@ curl -X POST http://localhost:5000/analyze \
 ## 🏗️ Tech Stack
 
 - **Backend**: Python + Flask
-- **Frontend**: HTML + Tailwind CSS
-- **AI**: Extensible (works with OpenAI, Anthropic, etc.)
-- **Database**: SQLite (optional)
+- **Frontend**: HTML + Tailwind CSS (self-hosted)
+- **AI**: OpenRouter (OpenAI-compatible)
+- **Database**: SQLite (dev) or PostgreSQL (recommended for prod)
 
 ## 📦 Project Structure
 
@@ -158,8 +158,12 @@ specforge/
 
 ```bash
 export PORT=5000
-export OPENAI_API_KEY=your_key_here  # For AI enhancement
+export OPENROUTER_API_KEY=your_key_here
+export OPENROUTER_MODEL=openai/gpt-4o-mini
+export OPENROUTER_SITE_URL=https://your-domain.example
 ```
+
+For the full list of supported env vars, see `.env.example`.
 
 ## Security
 

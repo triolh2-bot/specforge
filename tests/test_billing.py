@@ -32,16 +32,8 @@ class TestConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
-    MINIMAX_CLIENT_ID = ""
-    MINIMAX_CLIENT_SECRET = ""
-    MINIMAX_REDIRECT_URI = ""
-    MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
-    MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
-    MINIMAX_API_KEY = ""
-    MINIMAX_GROUP_ID = ""
-    MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
-    MINIMAX_MODEL = "MiniMax-M2.5"
+    OPENROUTER_API_KEY = ""
+    OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
@@ -134,7 +126,7 @@ class TestQuotaEnforcement(unittest.TestCase):
 
     def test_check_provider_allowed_for_free_plan(self):
         with self.app.app_context():
-            self.assertTrue(check_provider_allowed(self.workspace_id, "minimax"))
+            self.assertTrue(check_provider_allowed(self.workspace_id, "openrouter"))
 
     def test_workspace_plan_defaults_free(self):
         with self.app.app_context():
@@ -169,7 +161,7 @@ class BillingIntegrationTests(unittest.TestCase):
             json={
                 "requirements": requirements,
                 "ai_enhance": False,
-                "ai_provider": "minimax",
+                "ai_provider": "openrouter",
             },
         )
 
@@ -203,7 +195,7 @@ class BillingIntegrationTests(unittest.TestCase):
     def test_provider_check_endpoint(self):
         resp = self.client.post(
             "/api/billing/provider/check",
-            json={"provider": "minimax"},
+            json={"provider": "openrouter"},
         )
         self.assertEqual(resp.status_code, 200)
         body = resp.get_json()

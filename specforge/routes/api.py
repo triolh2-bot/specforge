@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from functools import wraps
 
-from flask import Blueprint, current_app, session
+from flask import Blueprint, current_app
 
 from ..http import error_response, json_response
 from ..services.ai_providers import ChatMessage, registry
-from ..services.auth_session import get_minimax_auth_status
 from ..services.abuse import rate_limit
-from ..validation import validate_minimax_chat_request, validate_minimax_enhance_request
+from ..validation import validate_ai_chat_request, validate_ai_enhance_request
 
 api_bp = Blueprint("api", __name__)
 
@@ -19,24 +18,22 @@ def _any_provider_available() -> bool:
     return registry.select() is not None
 
 
-def minimax_required(func):
+def provider_required(func):
     """Decorator that ensures at least one AI provider is available."""
     @wraps(func)
     def decorated_function(*args, **kwargs):
-        auth_state = get_minimax_auth_status()
-        if not auth_state["authenticated"] and not current_app.config["MINIMAX_API_KEY"]:
-            if not _any_provider_available():
-                return error_response("AI provider authentication required", status=401, code="authentication_required")
+        if not _any_provider_available():
+            return error_response("AI provider authentication required", status=401, code="authentication_required")
         return func(*args, **kwargs)
 
     return decorated_function
 
 
-@api_bp.route("/api/minimax/chat", methods=["POST"])
-@minimax_required
-@rate_limit("minimax_chat")
-def minimax_chat():
-    data = validate_minimax_chat_request()
+@api_bp.route("/api/ai/chat", methods=["POST"])
+@provider_required
+@rate_limit("ai_chat")
+def ai_chat():
+    data = validate_ai_chat_request()
 
     provider = registry.select()
     if provider is None:
@@ -46,7 +43,7 @@ def minimax_chat():
         ChatMessage(role="user", content=data["message"]),
     ]
 
-    model = data.get("model") or current_app.config.get("MINIMAX_MODEL")
+    model = data.get("model") or current_app.config.get("OPENROUTER_MODEL")
 
     result = provider.chat_completion(messages, model=model)
 
@@ -64,11 +61,11 @@ def minimax_chat():
     )
 
 
-@api_bp.route("/api/minimax/enhance", methods=["POST"])
-@minimax_required
-@rate_limit("minimax_enhance")
+@api_bp.route("/api/ai/enhance", methods=["POST"])
+@provider_required
+@rate_limit("ai_enhance")
 def enhance_with_provider():
-    data = validate_minimax_enhance_request()
+    data = validate_ai_enhance_request()
 
     provider = registry.select()
     if provider is None:
@@ -94,7 +91,7 @@ def enhance_with_provider():
         ChatMessage(role="user", content=prompt),
     ]
 
-    model = current_app.config.get("MINIMAX_MODEL")
+    model = current_app.config.get("OPENROUTER_MODEL")
 
     result = provider.chat_completion(messages, model=model)
 

@@ -14,7 +14,12 @@ from ..services.abuse import rate_limit
 from ..services.analysis_store import fetch_analysis
 from ..services.analytics import track_export_completed, track_funnel_event, EventName
 from ..services.auth_session import ensure_workspace_context
-from ..services.billing import consume_quota, QuotaExceededError
+from ..services.billing import (
+    consume_reserved_quota,
+    release_quota_reservation,
+    reserve_quota,
+    QuotaExceededError,
+)
 from ..services.exports import generate_export, SUPPORTED_FORMATS
 from ..services.rbac import PERM, enforce_resource_access, require_permission
 
@@ -23,7 +28,7 @@ exports_bp = Blueprint("exports", __name__)
 
 def _get_analysis_or_404(analysis_id: str, workspace_id: str) -> dict:
     """Fetch an analysis or return 404."""
-    analysis = fetch_analysis(analysis_id, workspace_id)
+    analysis = fetch_analysis(analysis_id, workspace_id, version_selector="approved")
     if not analysis:
         return None
     return analysis
@@ -34,7 +39,7 @@ def _generate_share_token() -> str:
 
 
 @exports_bp.route("/api/exports", methods=["POST"])
-@rate_limit("minimax_chat")
+@rate_limit("export_create")
 def create_export():
     """Create a new export for an analysis."""
     context = ensure_workspace_context()
@@ -59,11 +64,15 @@ def create_export():
 
     analysis = _get_analysis_or_404(analysis_id, workspace_id)
     if not analysis:
+        current_analysis = fetch_analysis(analysis_id, workspace_id)
+        if current_analysis:
+            return error_response("An approved analysis version is required before export", status=409, code="analysis_not_approved")
         return error_response("Analysis not found", status=404, code="analysis_not_found")
 
     # Check and consume export quota
+    reservation_key = None
     try:
-        consume_quota(workspace_id, "export")
+        reservation_key = reserve_quota(workspace_id, "export")
     except QuotaExceededError as exc:
         return json_response(
             {
@@ -82,6 +91,7 @@ def create_export():
     try:
         content, filename = generate_export(analysis, export_format)
     except Exception as exc:
+        release_quota_reservation(workspace_id, "export", reservation_key)
         return error_response(f"Export generation failed: {exc}", status=500, code="export_failed")
 
     share_token = _generate_share_token()
@@ -99,6 +109,7 @@ def create_export():
     )
     db.session.add(record)
     db.session.commit()
+    consume_reserved_quota(workspace_id, "export", reservation_key)
 
     track_export_completed(
         workspace_id=workspace_id,
@@ -223,6 +234,9 @@ def create_share_link(analysis_id: str):
 
     analysis = _get_analysis_or_404(analysis_id, workspace_id)
     if not analysis:
+        current_analysis = fetch_analysis(analysis_id, workspace_id)
+        if current_analysis:
+            return error_response("An approved analysis version is required before sharing", status=409, code="analysis_not_approved")
         return error_response("Analysis not found", status=404, code="analysis_not_found")
 
     data = request.get_json(silent=True) or {}
@@ -273,6 +287,9 @@ def list_share_links(analysis_id: str):
     # Verify analysis belongs to workspace
     analysis = _get_analysis_or_404(analysis_id, workspace_id)
     if not analysis:
+        current_analysis = fetch_analysis(analysis_id, workspace_id)
+        if current_analysis:
+            return error_response("An approved analysis version is required before sharing", status=409, code="analysis_not_approved")
         return error_response("Analysis not found", status=404, code="analysis_not_found")
 
     links = ShareLink.query.filter_by(

@@ -23,6 +23,8 @@ from ..services.paypal import (
     cancel_subscription as paypal_cancel_subscription,
     create_paypal_subscription,
     handle_paypal_webhook_event,
+    is_paypal_configured,
+    is_paypal_plan_available,
     verify_paypal_webhook_signature,
 )
 from ..services.rbac import PERM, require_permission, require_role
@@ -47,6 +49,7 @@ def get_quota():
 @billing_bp.route("/api/billing/plans", methods=["GET"])
 def list_plans():
     """Return all available billing plans with PayPal checkout info."""
+    paypal_configured = is_paypal_configured()
     plans = {}
     for name, limits in PLANS.items():
         plan_data = {
@@ -60,18 +63,23 @@ def list_plans():
             "priority_queue": limits.priority_queue,
         }
 
-        # Add PayPal pricing if configured
-        price = None
         if name == "free":
             plan_data["price"] = "Free"
+            plan_data["checkout_available"] = False
         else:
             price_key = f"PAYPAL_PLAN_PRICE_{name.upper()}"
-            price = current_app.config.get(price_key)
-            plan_data["price"] = price or "Contact sales"
+            plan_data["price"] = current_app.config.get(price_key) or "Contact sales"
+            plan_data["checkout_available"] = is_paypal_plan_available(name)
 
         plans[name] = plan_data
 
-    return json_response({"plans": plans})
+    return json_response({
+        "plans": plans,
+        "billing": {
+            "provider": "paypal",
+            "configured": paypal_configured,
+        },
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +105,20 @@ def subscribe():
             f"Invalid plan '{plan_name}'. Choose 'pro' or 'enterprise'.",
             status=400,
             code="invalid_plan",
+        )
+
+    if not is_paypal_configured():
+        return error_response(
+            "PayPal billing is not configured yet. Add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET to enable upgrades.",
+            status=503,
+            code="billing_unavailable",
+        )
+
+    if not is_paypal_plan_available(plan_name):
+        return error_response(
+            f"The '{plan_name}' plan is not configured for PayPal checkout yet. Add PAYPAL_PLAN_ID_{plan_name.upper()} to enable it.",
+            status=503,
+            code="plan_unavailable",
         )
 
     # Build return/cancel URLs

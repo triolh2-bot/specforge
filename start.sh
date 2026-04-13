@@ -2,7 +2,7 @@
 
 # SpecForge Startup Script
 
-echo "🔓 Starting SpecForge..."
+echo "Starting SpecForge..."
 
 # Check if Flask is installed
 if ! python -c "import flask" 2>/dev/null; then
@@ -11,5 +11,5 @@ if ! python -c "import flask" 2>/dev/null; then
 fi
 
 # Run the app
-echo "🚀 SpecForge running on http://localhost:5000"
+echo "SpecForge running on http://localhost:5000"
 python app.py

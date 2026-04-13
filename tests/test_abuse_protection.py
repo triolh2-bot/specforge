@@ -17,28 +17,20 @@ class TestConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
-    MINIMAX_CLIENT_ID = ""
-    MINIMAX_CLIENT_SECRET = ""
-    MINIMAX_REDIRECT_URI = ""
-    MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
-    MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
-    MINIMAX_API_KEY = ""
-    MINIMAX_GROUP_ID = ""
-    MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
-    MINIMAX_MODEL = "MiniMax-M2.5"
+    OPENROUTER_API_KEY = ""
+    OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MAX_CONTENT_LENGTH = 256
     RATE_LIMITS = {
         "analyze": {"limit": 2, "window": 60},
-        "minimax_chat": {"limit": 2, "window": 60},
-        "minimax_enhance": {"limit": 2, "window": 60},
-        "minimax_login": {"limit": 2, "window": 60},
-        "minimax_callback": {"limit": 2, "window": 60},
+        "ai_chat": {"limit": 2, "window": 60},
+        "ai_enhance": {"limit": 2, "window": 60},
+        "auth_login": {"limit": 2, "window": 60},
+        "auth_callback": {"limit": 2, "window": 60},
         "list_analyses": {"limit": 2, "window": 60},
         "get_analysis": {"limit": 2, "window": 60},
         "get_job": {"limit": 2, "window": 60},
-        "minimax_status": {"limit": 2, "window": 60},
+        "auth_status": {"limit": 2, "window": 60},
     }
 
 
@@ -65,7 +57,7 @@ class AbuseProtectionTests(unittest.TestCase):
         payload = {
             "requirements": "I want an e-commerce site for my bakery with ordering and an admin dashboard.",
             "ai_enhance": False,
-            "ai_provider": "minimax",
+                "ai_provider": "openrouter",
         }
         first = self.client.post("/analyze", json=payload)
         second = self.client.post("/analyze", json=payload)
@@ -81,7 +73,7 @@ class AbuseProtectionTests(unittest.TestCase):
         oversized = "x" * 400
         response = self.client.post(
             "/analyze",
-            data=f'{{"requirements":"{oversized}","ai_enhance":false,"ai_provider":"minimax"}}',
+            data=f'{{"requirements":"{oversized}","ai_enhance":false,"ai_provider":"openrouter"}}',
             content_type="application/json",
         )
 

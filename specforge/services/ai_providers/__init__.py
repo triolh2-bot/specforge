@@ -15,7 +15,6 @@ Usage::
 """
 
 from .base import AIProvider, ChatMessage, ProviderCapability, ProviderInfo, ProviderResponse, ProviderStatus
-from .minimax_provider import MiniMaxProvider
 from .openrouter_provider import OpenRouterProvider
 from .registry import registry
 from .register_providers import register_builtin_providers
@@ -23,7 +22,6 @@ from .register_providers import register_builtin_providers
 __all__ = [
     "AIProvider",
     "ChatMessage",
-    "MiniMaxProvider",
     "OpenRouterProvider",
     "ProviderCapability",
     "ProviderInfo",

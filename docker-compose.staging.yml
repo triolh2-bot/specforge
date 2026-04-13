@@ -29,20 +29,17 @@ services:
       DATABASE_URL: postgresql://specforge:${DB_PASSWORD:-staging-password-change-me}@postgres:5432/specforge_staging
       SECRET_KEY: ${SECRET_KEY:-staging-secret-change-me}
       TOKEN_ENCRYPTION_SECRET: ${TOKEN_ENCRYPTION_SECRET:-staging-encryption-secret}
-      MINIMAX_CLIENT_ID: ${MINIMAX_CLIENT_ID}
-      MINIMAX_CLIENT_SECRET: ${MINIMAX_CLIENT_SECRET}
-      MINIMAX_REDIRECT_URI: ${MINIMAX_REDIRECT_URI:-https://staging.specforge.dev/auth/minimax/callback}
-      MINIMAX_API_KEY: ${MINIMAX_API_KEY}
-      MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID}
       LOG_LEVEL: DEBUG
       APP_VERSION: ${APP_VERSION:-staging}
       # Staging-specific: soft quota enforcement for testing
       QUOTA_ENFORCEMENT: soft
       # Feature flags: all enabled in staging
       AI_ENHANCEMENT_ENABLED: "true"
-      MINIMAX_OAUTH_ENABLED: "true"
       EXPORT_SHARING_ENABLED: "true"
       ANALYTICS_ENABLED: "true"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-https://staging.specforge.dev}
     ports:
       - "5001:5000"
     depends_on:
@@ -62,9 +59,10 @@ services:
       DATABASE_URL: postgresql://specforge:${DB_PASSWORD:-staging-password-change-me}@postgres:5432/specforge_staging
       SECRET_KEY: ${SECRET_KEY:-staging-secret-change-me}
       TOKEN_ENCRYPTION_SECRET: ${TOKEN_ENCRYPTION_SECRET:-staging-encryption-secret}
-      MINIMAX_API_KEY: ${MINIMAX_API_KEY}
-      MINIMAX_GROUP_ID: ${MINIMAX_GROUP_ID}
       LOG_LEVEL: DEBUG
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openai/gpt-4o-mini}
+      OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-https://staging.specforge.dev}
     depends_on:
       postgres:
         condition: service_healthy

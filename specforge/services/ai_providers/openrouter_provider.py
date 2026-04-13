@@ -7,7 +7,7 @@ import logging
 from typing import Any, Optional
 
 import requests
-from flask import current_app
+from flask import current_app, request
 
 from .base import AIProvider, ChatMessage, ProviderCapability, ProviderResponse, ProviderStatus
 
@@ -61,10 +61,17 @@ class OpenRouterProvider(AIProvider):
         if not current_app.config.get("OPENROUTER_API_KEY"):
             return ProviderResponse(success=False, error="OpenRouter API key not configured")
 
+        site_url = current_app.config.get("OPENROUTER_SITE_URL")
+        if not site_url:
+            try:
+                site_url = request.host_url
+            except RuntimeError:
+                site_url = "https://specforge.dev"
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {current_app.config['OPENROUTER_API_KEY']}",
-            "HTTP-Referer": current_app.config.get("OPENROUTER_SITE_URL", "https://specforge.dev"),
+            "HTTP-Referer": site_url,
             "X-Title": "SpecForge",
         }
 
@@ -86,6 +93,13 @@ class OpenRouterProvider(AIProvider):
             return ProviderResponse(success=False, error="OpenRouter API call timed out", model=model)
         except requests.exceptions.RequestException as exc:
             logger.error("OpenRouter API call failed: %s", exc)
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            if status_code == 429:
+                return ProviderResponse(
+                    success=False,
+                    error="OpenRouter rate limit exceeded. Too many requests. Please wait a moment and try again.",
+                    model=model,
+                )
             return ProviderResponse(success=False, error=str(exc), model=model)
         except Exception as exc:
             logger.error("Unexpected error calling OpenRouter API: %s", exc)
@@ -107,11 +121,12 @@ class OpenRouterProvider(AIProvider):
         usage = result.get("usage")
 
         # Try to extract JSON from markdown-wrapped responses
-        data = self._extract_json(content)
+        data = self._extract_json(content) or {}
+        data["raw_content"] = content
 
         return ProviderResponse(
             success=True,
-            data=data if data is not None else {"raw_content": content},
+            data=data,
             model=result.get("model", model),
             usage=usage,
         )

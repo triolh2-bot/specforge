@@ -14,7 +14,13 @@ from ..services.analytics import (
 from ..services.auth_session import ensure_workspace_context
 from ..services.abuse import rate_limit
 from ..services.analysis_store import fetch_analysis_history, persist_analysis, fetch_analysis, refine_analysis_record
-from ..services.billing import check_provider_allowed, consume_quota, QuotaExceededError
+from ..services.billing import (
+    check_provider_allowed,
+    consume_reserved_quota,
+    release_quota_reservation,
+    reserve_quota,
+    QuotaExceededError,
+)
 from ..services.health import build_liveness_report, build_readiness_report
 from ..services.job_queue import enqueue_analysis_job
 from ..services.prd import generate_prd, generate_refined_prd, generate_brief
@@ -22,6 +28,23 @@ from ..validation import validate_analyze_request, validate_refine_request
 from ..repositories.analysis_repository import count_analysis_records
 
 main_bp = Blueprint("main", __name__)
+
+
+def _brief_error_status(error_msg: str) -> int:
+    normalized = (error_msg or "").lower()
+    if any(token in normalized for token in ("rate limit", "too many requests", "429")):
+        return 429
+    if any(token in normalized for token in (
+        "api key",
+        "configured",
+        "timeout",
+        "provider",
+        "model",
+        "choices",
+        "openrouter",
+    )):
+        return 502
+    return 400
 
 
 def _check_first_analysis(workspace_id: str) -> bool:
@@ -59,11 +82,28 @@ def analyze():
             status=403,
         )
 
-    # Check and consume analysis quota
+    intake_fields = {
+        key: data.get(key)
+        for key in (
+            "target_users",
+            "business_goal",
+            "success_metrics",
+            "constraints",
+            "integrations",
+            "compliance",
+            "monetization",
+            "timeline",
+            "budget",
+            "scope_notes",
+        )
+        if data.get(key) is not None
+    }
+
+    reservations = {}
     try:
-        consume_quota(workspace_id, "analysis")
+        reservations["analysis"] = reserve_quota(workspace_id, "analysis")
         if data["ai_enhance"]:
-            consume_quota(workspace_id, "ai_enhancement")
+            reservations["ai_enhancement"] = reserve_quota(workspace_id, "ai_enhancement")
     except QuotaExceededError as exc:
         return json_response(
             {
@@ -91,26 +131,40 @@ def analyze():
     track_provider_selected(workspace_id=workspace_id, provider=data["ai_provider"], request_id=request_id)
 
     if data["ai_enhance"]:
-        job = enqueue_analysis_job(
+        try:
+            job = enqueue_analysis_job(
+                data["requirements"],
+                data["ai_enhance"],
+                data["ai_provider"],
+                workspace_id=workspace_id,
+                request_id=request_id,
+                model=data.get("model"),
+                intake_fields=intake_fields,
+                quota_reservations=reservations,
+            )
+            return json_response(
+                {
+                    "success": True,
+                    "job_id": job["job_id"],
+                    "status": job["status"],
+                    "queued": True,
+                    "workspace_id": workspace_id,
+                },
+                status=202,
+            )
+        except Exception:
+            release_quota_reservation(workspace_id, "analysis", reservations.get("analysis"))
+            release_quota_reservation(workspace_id, "ai_enhancement", reservations.get("ai_enhancement"))
+            raise
+
+    try:
+        result = generate_prd(
             data["requirements"],
             data["ai_enhance"],
             data["ai_provider"],
-            workspace_id=workspace_id,
-            request_id=request_id,
+            model=data.get("model"),
+            intake_fields=intake_fields,
         )
-        return json_response(
-            {
-                "success": True,
-                "job_id": job["job_id"],
-                "status": job["status"],
-                "queued": True,
-                "workspace_id": workspace_id,
-            },
-            status=202,
-        )
-
-    try:
-        result = generate_prd(data["requirements"], data["ai_enhance"], data["ai_provider"])
         result = persist_analysis(
             data["requirements"],
             data["ai_enhance"],
@@ -119,6 +173,9 @@ def analyze():
             workspace_id=workspace_id,
             request_id=request_id,
         )
+        consume_reserved_quota(workspace_id, "analysis", reservations.get("analysis"))
+        if data["ai_enhance"]:
+            consume_reserved_quota(workspace_id, "ai_enhancement", reservations.get("ai_enhancement"))
 
         # Track completion
         track_analysis_completed(
@@ -137,6 +194,8 @@ def analyze():
 
         return json_response(result)
     except Exception as exc:
+        release_quota_reservation(workspace_id, "analysis", reservations.get("analysis"))
+        release_quota_reservation(workspace_id, "ai_enhancement", reservations.get("ai_enhancement"))
         track_analysis_failed(workspace_id=workspace_id, error=str(exc), request_id=request_id)
         raise
 
@@ -165,8 +224,9 @@ def refine_analysis():
             status=403,
         )
 
+    reservation_key = None
     try:
-        consume_quota(workspace_id, "ai_enhancement")
+        reservation_key = reserve_quota(workspace_id, "ai_enhancement")
     except QuotaExceededError as exc:
         return json_response(
             {
@@ -191,41 +251,19 @@ def refine_analysis():
         )
 
     try:
-        updated_ai_status = generate_refined_prd(
-            existing_analysis["requirements"],
-            existing_analysis.get("domain", "unknown"),
+        result = generate_refined_prd(
+            existing_analysis,
             answers,
-            ai_provider=ai_provider
+            ai_provider=ai_provider,
+            model=data.get("model"),
+            version_number=data.get("version_number"),
         )
-        
-        # Build new PRD by merging
-        old_prd = existing_analysis.get("prd", {})
-        new_prd = dict(old_prd)
-        
-        if updated_ai_status and updated_ai_status["status"] == "success":
-            ai_data = updated_ai_status["data"]
-            
-            if "overview" in new_prd:
-                new_prd["overview"]["summary"] = ai_data.get("prd_summary", new_prd["overview"]["summary"])
-            else:
-                new_prd["overview"] = {"summary": ai_data.get("prd_summary", "")}
-            
-            if "technical_constraints" in new_prd:
-                new_prd["technical_constraints"]["tech_stack"] = ai_data.get("tech_stack_recommendation", new_prd["technical_constraints"].get("tech_stack"))
-                new_prd["technical_constraints"]["timeline"] = ai_data.get("estimated_timeline", new_prd["technical_constraints"].get("timeline"))
-            else:
-                new_prd["technical_constraints"] = {
-                    "tech_stack": ai_data.get("tech_stack_recommendation", ""),
-                    "timeline": ai_data.get("estimated_timeline", "")
-                }
-            
-            if ai_data.get("risk_factors"):
-                new_prd["risks"] = ai_data["risk_factors"]
+        stored = refine_analysis_record(analysis_id, workspace_id, result.get("ai_enhanced"), result, answers)
+        consume_reserved_quota(workspace_id, "ai_enhancement", reservation_key)
 
-        result = refine_analysis_record(analysis_id, workspace_id, updated_ai_status, new_prd, answers)
-
-        return json_response(result)
+        return json_response(stored)
     except Exception as exc:
+        release_quota_reservation(workspace_id, "ai_enhancement", reservation_key)
         raise
 
 
@@ -233,35 +271,60 @@ def refine_analysis():
 @rate_limit("analyze")
 def generate_brief_route():
     from ..validation import parse_json_object, require_string, optional_string
-    data = parse_json_object()
-    workspace = ensure_workspace_context()
-    workspace_id = workspace["workspace_id"]
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    try:
+        data = parse_json_object()
+        workspace = ensure_workspace_context()
+        workspace_id = workspace["workspace_id"]
 
-    project_name  = require_string(data, "project_name", min_length=2, max_length=200)
-    project_type  = optional_string(data, "project_type", default="Web Application", max_length=100)
-    core_idea     = require_string(data, "core_idea", min_length=10, max_length=2000)
-    target_audience = optional_string(data, "target_audience", default="General users", max_length=300)
-    key_features  = optional_string(data, "key_features", default="", max_length=2000)
-    ai_provider   = optional_string(data, "ai_provider", default="openrouter",
-                                    allowed_values={"minimax", "openrouter"})
+        project_name  = require_string(data, "project_name", min_length=2, max_length=200)
+        project_type  = optional_string(data, "project_type", default="Web Application", max_length=100)
+        core_idea     = require_string(data, "core_idea", min_length=10, max_length=2000)
+        target_audience = optional_string(data, "target_audience", default="General users", max_length=300)
+        key_features  = optional_string(data, "key_features", default="", max_length=2000)
+        ai_provider = optional_string(data, "ai_provider", default="openrouter", allowed_values={"openrouter"})
 
-    if not check_provider_allowed(workspace_id, ai_provider):
-        return json_response(
-            {"success": False, "error": {"code": "provider_not_allowed",
-             "message": f"Provider '{ai_provider}' is not available on your plan."}},
-            status=403,
+        if not check_provider_allowed(workspace_id, ai_provider):
+            return json_response(
+                {"success": False, "error": {"code": "provider_not_allowed",
+                 "message": f"Provider '{ai_provider}' is not available on your plan."}},
+                status=403,
+            )
+
+        result = generate_brief(
+            project_name=project_name,
+            project_type=project_type,
+            core_idea=core_idea,
+            target_audience=target_audience,
+            key_features=key_features,
+            ai_provider=ai_provider,
         )
+        if result["success"]:
+            return json_response(result, status=200)
 
-    result = generate_brief(
-        project_name=project_name,
-        project_type=project_type,
-        core_idea=core_idea,
-        target_audience=target_audience,
-        key_features=key_features,
-        ai_provider=ai_provider,
-    )
-    status = 200 if result["success"] else 502
-    return json_response(result, status=status)
+        error_msg = result.get("error", "")
+        status = _brief_error_status(error_msg)
+        error_code = {
+            429: "provider_rate_limited",
+            502: "provider_error",
+            400: "validation_error",
+        }[status]
+        return json_response(
+            {
+                "success": False,
+                "error": {
+                    "code": error_code,
+                    "message": error_msg or "Brief generation failed.",
+                },
+            },
+            status=status,
+        )
+    except Exception as e:
+        logger.error(f"Generate brief route error: {str(e)}", exc_info=True)
+        raise  # Re-raise to let the global error handler catch it
 
 
 @main_bp.route("/health", methods=["GET"])

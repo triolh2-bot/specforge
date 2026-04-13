@@ -9,10 +9,11 @@
 1. [Overview](#overview)
 2. [Getting Started](#getting-started)
 3. [Features](#features)
-4. [MiniMax Integration](#minimax-integration)
-5. [Understanding Results](#understanding-results)
-6. [API Reference](#api-reference)
-7. [Configuration](#configuration)
+4. [Generate Brief](#generate-brief)
+5. [OpenRouter Setup](#openrouter-setup)
+6. [Understanding Results](#understanding-results)
+7. [API Reference](#api-reference)
+8. [Configuration](#configuration)
 
 ---
 
@@ -127,39 +128,37 @@ Detects stakeholder conflicts:
 
 ---
 
-## MiniMax Integration
+## Generate Brief
 
-SpecForge supports AI enhancement using MiniMax.
+The "Generate Brief" modal helps you draft a full requirements brief from a few structured inputs.
 
-### Two Authentication Methods
+### How it works
 
-#### Method 1: OAuth (Recommended)
+1. Click **Generate Brief** in the Analyze view.
+2. Fill in Project Name and Core Idea (required).
+3. Choose OpenRouter as the AI provider.
+4. Click **Generate** and wait for the brief to populate the requirements box.
 
-```bash
-# Set environment variables
-export MINIMAX_CLIENT_ID=your_client_id
-export MINIMAX_CLIENT_SECRET=your_client_secret
-export MINIMAX_REDIRECT_URI=http://localhost:5000/auth/minimax/callback
-```
+The generated brief can then be analyzed like any other requirements input.
 
-**Flow:**
-1. User clicks "Connect MiniMax" 
-2. Redirects to MiniMax authorization
-3. Callback stores access token
-4. AI enhancement available
+## OpenRouter Setup
 
-#### Method 2: API Key
+SpecForge supports AI enhancement using OpenRouter.
+
+### Environment Variables
 
 ```bash
-# Set API key directly
-export MINIMAX_API_KEY=your_api_key
+export OPENROUTER_API_KEY=your_api_key
+export OPENROUTER_MODEL=openai/gpt-4o-mini
+export OPENROUTER_SITE_URL=http://localhost:5000
 ```
 
 ### Using AI Enhancement
 
-1. Check "AI Enhance with MiniMax" checkbox
-2. Click "Analyze Requirements"
-3. MiniMax will enhance with:
+1. Check "AI Enhance" in the Analyze form.
+2. Choose the OpenRouter provider.
+3. Click "Analyze Requirements".
+4. OpenRouter will enhance the output with:
    - Missing technical components
    - Security considerations
    - Scalability recommendations
@@ -200,7 +199,7 @@ export MINIMAX_API_KEY=your_api_key
   },
   "ai_enhanced": {
     "status": "ready",
-    "provider": "minimax"
+    "provider": "openrouter"
   }
 }
 ```
@@ -229,7 +228,7 @@ Content-Type: application/json
 {
   "requirements": "I want an e-commerce store...",
   "ai_enhance": true,
-  "ai_provider": "minimax"
+  "ai_provider": "openrouter"
 }
 ```
 
@@ -245,24 +244,42 @@ Content-Type: application/json
 
 ---
 
-### MiniMax Chat
+### Generate Brief
 
 ```bash
-POST /api/minimax/chat
+POST /api/generate-brief
 Content-Type: application/json
 
 {
-  "message": "Help me design a login system",
-  "model": "abab6.5s-chat"
+  "project_name": "TaskFlow",
+  "project_type": "Web Application",
+  "core_idea": "Task management for distributed teams",
+  "target_audience": "SMBs",
+  "key_features": "team boards, notifications, reports",
+  "ai_provider": "openrouter"
 }
 ```
 
 ---
 
-### MiniMax Enhancement
+### AI Chat
 
 ```bash
-POST /api/minimax/enhance
+POST /api/ai/chat
+Content-Type: application/json
+
+{
+  "message": "Help me design a login system",
+  "model": "openai/gpt-4o-mini"
+}
+```
+
+---
+
+### AI Enhancement
+
+```bash
+POST /api/ai/enhance
 Content-Type: application/json
 
 {
@@ -285,9 +302,9 @@ GET /health
   "version": "2.0.0",
   "features": [...],
   "ai_providers": {
-    "minimax": {
-      "oauth_configured": true,
-      "api_key_configured": false
+    "openrouter": {
+      "api_key_configured": true,
+      "model_configured": true
     }
   }
 }
@@ -305,8 +322,8 @@ GET /auth/status
 ```json
 {
   "authenticated": true,
-  "provider": "minimax",
-  "token_expires_in": 3600
+  "provider": null,
+  "token_expires_in": 0
 }
 ```
 
@@ -320,10 +337,9 @@ GET /auth/status
 |----------|----------|-------------|
 | `PORT` | No | Server port (default: 5000) |
 | `SECRET_KEY` | No | Session secret key |
-| `MINIMAX_CLIENT_ID` | No* | OAuth client ID |
-| `MINIMAX_CLIENT_SECRET` | No* | OAuth client secret |
-| `MINIMAX_REDIRECT_URI` | No | OAuth callback URL |
-| `MINIMAX_API_KEY` | No* | Direct API key access |
+| `OPENROUTER_API_KEY` | No* | OpenRouter API key |
+| `OPENROUTER_MODEL` | No | OpenRouter model name |
+| `OPENROUTER_SITE_URL` | No | Domain sent as HTTP-Referer |
 
 *Required for AI features
 
@@ -358,8 +374,8 @@ DOMAIN_TEMPLATES = {
 ### 2. AI-Enhanced Analysis
 
 ```
-1. Click "Connect MiniMax" (or set API key)
-2. Check "AI Enhance with MiniMax"
+1. Set OPENROUTER_API_KEY in your environment
+2. Check "AI Enhance"
 3. Enter requirements
 4. Click "Analyze Requirements"
 5. View both PRD + AI enhancement suggestions
@@ -381,8 +397,8 @@ DOMAIN_TEMPLATES = {
 | Issue | Solution |
 |-------|----------|
 | "Please enter at least 10 characters" | Add more detail to requirements |
-| MiniMax OAuth fails | Check CLIENT_ID and REDIRECT_URI |
-| AI enhancement not working | Verify API key or OAuth flow |
+| OpenRouter requests fail | Check OPENROUTER_API_KEY, model, and rate limits |
+| AI enhancement not working | Verify OpenRouter credentials and provider status |
 | Domain detection wrong | Add more domain-specific keywords |
 
 ### Debug Mode
@@ -405,4 +421,4 @@ logging.basicConfig(level=logging.DEBUG)
 
 **🔓 SpecForge - Turn "build me an app" into buildable software**
 
-*Version 2.0 - Now with MiniMax AI Integration*
+*Version 2.0 - OpenRouter-powered AI enhancement*

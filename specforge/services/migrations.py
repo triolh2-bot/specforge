@@ -28,30 +28,39 @@ def run_migrations(app):
                 )
             )
 
+        with engine.begin() as connection:
             applied_versions = {
                 row[0] for row in connection.execute(text("SELECT version FROM schema_migrations")).fetchall()
             }
 
-            for migration_file in sorted(migrations_dir.glob("*.sql")):
-                version = migration_file.stem
-                if version in applied_versions:
-                    continue
+        for migration_file in sorted(migrations_dir.glob("*.sql")):
+            version = migration_file.stem
+            if version in applied_versions:
+                continue
 
-                sql_text = migration_file.read_text(encoding="utf-8")
-                statements = [statement.strip() for statement in sql_text.split(";") if statement.strip()]
+            sql_text = migration_file.read_text(encoding="utf-8")
+            statements = [statement.strip() for statement in sql_text.split(";") if statement.strip()]
+            with engine.begin() as connection:
                 for statement in statements:
                     try:
                         connection.exec_driver_sql(statement)
                     except OperationalError as exc:
-                        # "Table already exists" and similar — safe to skip
-                        logger.warning(
-                            "Migration '%s' statement skipped (likely already applied): %s — %s",
-                            version,
-                            statement[:80],
-                            exc,
-                        )
+                        # "Table already exists", "Duplicate column", etc. — safe to skip if we assume
+                        # the migration was partially applied or the schema matches.
+                        # SQLite error 1: "table X already exists" or "duplicate column name: Y"
+                        # Postgres error 42P07: "relation X already exists" or 42701: "column X already exists"
+                        msg = str(exc).lower()
+                        if any(term in msg for term in ("already exists", "duplicate column")):
+                            logger.warning(
+                                "Migration '%s' statement skipped (likely already applied): %s — %s",
+                                version,
+                                statement[:80],
+                                exc,
+                            )
+                        else:
+                            logger.error("Migration '%s' failed: %s — %s", version, statement[:80], exc)
+                            raise
                     except Exception as exc:
-                        # Real errors — log and abort the migration
                         logger.error("Migration '%s' failed: %s — %s", version, statement[:80], exc)
                         raise
                 connection.execute(

@@ -19,8 +19,10 @@ class AnalysisRecord(db.Model):
     status = db.Column(db.String(32), nullable=False, default="completed")
 
     requirements_text = db.Column(db.Text, nullable=False)
-    ai_enhance_requested = db.Column(db.Boolean, nullable=False, default=False)
+    ai_enhance_requested = db.Column(db.Boolean, nullable=False, server_default=db.text('FALSE'))
     ai_provider = db.Column(db.String(64), nullable=True)
+    model = db.Column(db.String(128), nullable=True)
+    intake_json = db.Column(db.Text, nullable=True)
 
     domain = db.Column(db.String(64), nullable=False)
     rms = db.Column(db.Integer, nullable=False)
@@ -31,6 +33,30 @@ class AnalysisRecord(db.Model):
     prd_json = db.Column(db.Text, nullable=False)
     ai_enhanced_json = db.Column(db.Text, nullable=True)
     answers_json = db.Column(db.Text, nullable=True)
+    current_version_number = db.Column(db.Integer, nullable=False, default=1, server_default=db.text("1"))
+    approved_version_number = db.Column(db.Integer, nullable=True)
+
+
+class AnalysisVersion(db.Model):
+    __tablename__ = "analysis_versions"
+    __table_args__ = (
+        db.UniqueConstraint("analysis_id", "version_number", name="uq_analysis_versions_analysis_id_version"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    analysis_id = db.Column(db.String(36), db.ForeignKey("analysis_records.id"), nullable=False, index=True)
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
+    version_number = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+    product_brief_json = db.Column(db.Text, nullable=False)
+    clarification_questions_json = db.Column(db.Text, nullable=False)
+    prd_document_json = db.Column(db.Text, nullable=False)
+    generation_run_json = db.Column(db.Text, nullable=False)
+    legacy_prd_json = db.Column(db.Text, nullable=False)
+    section_diffs_json = db.Column(db.Text, nullable=True)
+    approval_state = db.Column(db.String(16), nullable=False, default="draft", server_default=db.text("'draft'"))
+    approved_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
 
 class AnalysisJob(db.Model):
@@ -46,8 +72,11 @@ class AnalysisJob(db.Model):
     request_id = db.Column(db.String(64), nullable=True)
     analysis_id = db.Column(db.String(36), nullable=True)
     requirements_text = db.Column(db.Text, nullable=False)
-    ai_enhance_requested = db.Column(db.Boolean, nullable=False, default=False)
+    ai_enhance_requested = db.Column(db.Boolean, nullable=False, server_default=db.text('FALSE'))
     ai_provider = db.Column(db.String(64), nullable=True)
+    model = db.Column(db.String(128), nullable=True)
+    intake_json = db.Column(db.Text, nullable=True)
+    quota_reservations_json = db.Column(db.Text, nullable=True)
 
     status = db.Column(db.String(32), nullable=False, default="queued")
     attempt_count = db.Column(db.Integer, nullable=False, default=0)
@@ -65,7 +94,7 @@ class AuthSessionCredential(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
     auth_session_id = db.Column(db.String(64), nullable=False, unique=True, index=True)
-    provider = db.Column(db.String(32), nullable=False, default="minimax")
+    provider = db.Column(db.String(32), nullable=False, default="session")
     encrypted_access_token = db.Column(db.Text, nullable=True)
     encrypted_refresh_token = db.Column(db.Text, nullable=True)
     token_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -135,6 +164,24 @@ class QuotaUsage(db.Model):
     metric = db.Column(db.String(64), nullable=False, index=True)
     amount = db.Column(db.Integer, nullable=False, default=1)
     used_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+
+
+class QuotaReservation(db.Model):
+    __tablename__ = "quota_reservations"
+    __table_args__ = (
+        db.UniqueConstraint("reservation_key", name="uq_quota_reservations_key"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
+    workspace_id = db.Column(db.String(36), nullable=False, index=True)
+    metric = db.Column(db.String(64), nullable=False, index=True)
+    reservation_key = db.Column(db.String(64), nullable=False, index=True)
+    amount = db.Column(db.Integer, nullable=False, default=1)
+    status = db.Column(db.String(16), nullable=False, default="reserved", index=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    consumed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    released_at = db.Column(db.DateTime(timezone=True), nullable=True)
 
 
 class WorkspaceSubscription(db.Model):

@@ -24,6 +24,7 @@ from ..models import (
     AuthSessionCredential,
     ExportRecord,
     ProductEvent,
+    QuotaReservation,
     QuotaUsage,
     ShareLink,
     Workspace,
@@ -217,6 +218,9 @@ def export_my_data():
     quota = QuotaUsage.query.filter_by(workspace_id=workspace_id).order_by(
         QuotaUsage.used_at.desc()
     ).limit(500).all()
+    quota_reservations = QuotaReservation.query.filter_by(workspace_id=workspace_id).order_by(
+        QuotaReservation.created_at.desc()
+    ).limit(500).all()
 
     export_data = {
         "export_generated_at": datetime.now(timezone.utc).isoformat(),
@@ -268,6 +272,15 @@ def export_my_data():
             {"metric": q.metric, "amount": q.amount, "used_at": q.used_at.isoformat() if q.used_at else None}
             for q in quota
         ],
+        "quota_reservations": [
+            {
+                "metric": r.metric,
+                "status": r.status,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "expires_at": r.expires_at.isoformat() if r.expires_at else None,
+            }
+            for r in quota_reservations
+        ],
     }
 
     logger.info("Data export generated for workspace %s", workspace_id)
@@ -314,6 +327,7 @@ def delete_my_data():
         "shares": 0,
         "events": 0,
         "quota_usage": 0,
+        "quota_reservations": 0,
     }
 
     # Delete in order to respect foreign key constraints
@@ -323,6 +337,7 @@ def delete_my_data():
     deleted["analyses"] = AnalysisRecord.query.filter_by(workspace_id=workspace_id).delete()
     deleted["events"] = ProductEvent.query.filter_by(workspace_id=workspace_id).delete()
     deleted["quota_usage"] = QuotaUsage.query.filter_by(workspace_id=workspace_id).delete()
+    deleted["quota_reservations"] = QuotaReservation.query.filter_by(workspace_id=workspace_id).delete()
 
     # Delete subscription and workspace
     WorkspaceSubscription.query.filter_by(workspace_id=workspace_id).delete()

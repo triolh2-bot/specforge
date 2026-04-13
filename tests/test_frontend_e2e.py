@@ -30,16 +30,8 @@ class TestConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
-    MINIMAX_CLIENT_ID = ""
-    MINIMAX_CLIENT_SECRET = ""
-    MINIMAX_REDIRECT_URI = ""
-    MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
-    MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
-    MINIMAX_API_KEY = ""
-    MINIMAX_GROUP_ID = ""
-    MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
-    MINIMAX_MODEL = "MiniMax-M2.5"
+    OPENROUTER_API_KEY = ""
+    OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
@@ -286,7 +278,7 @@ class FrontendAPIContractTests(unittest.TestCase):
     def test_analyze_response_has_required_fields(self):
         resp = self.client.post(
             "/analyze",
-            json={"requirements": "Build an e-commerce store.", "ai_enhance": False, "ai_provider": "minimax"},
+            json={"requirements": "Build an e-commerce store.", "ai_enhance": False, "ai_provider": "openrouter"},
         )
         self.assertEqual(resp.status_code, 200)
         data = resp.get_json()
@@ -299,7 +291,7 @@ class FrontendAPIContractTests(unittest.TestCase):
     def test_prd_structure_has_nested_fields(self):
         resp = self.client.post(
             "/analyze",
-            json={"requirements": "Build a blog platform.", "ai_enhance": False, "ai_provider": "minimax"},
+            json={"requirements": "Build a blog platform.", "ai_enhance": False, "ai_provider": "openrouter"},
         )
         data = resp.get_json()
         prd = data["prd"]
@@ -319,7 +311,7 @@ class FrontendAPIContractTests(unittest.TestCase):
         # Create an analysis first
         self.client.post(
             "/analyze",
-            json={"requirements": "Build a CRM.", "ai_enhance": False, "ai_provider": "minimax"},
+            json={"requirements": "Build a CRM.", "ai_enhance": False, "ai_provider": "openrouter"},
         )
         resp = self.client.get("/api/analyses")
         self.assertEqual(resp.status_code, 200)
@@ -339,7 +331,7 @@ class FrontendAPIContractTests(unittest.TestCase):
     def test_error_response_structure(self):
         resp = self.client.post(
             "/analyze",
-            json={"requirements": "", "ai_enhance": False, "ai_provider": "minimax"},
+            json={"requirements": "", "ai_enhance": False, "ai_provider": "openrouter"},
         )
         # Empty requirements should trigger validation error
         self.assertIn(resp.status_code, [400, 422])
@@ -428,7 +420,7 @@ class ErrorStateTests(unittest.TestCase):
     def test_empty_requirements_rejected(self):
         resp = self.client.post(
             "/analyze",
-            json={"requirements": "", "ai_enhance": False, "ai_provider": "minimax"},
+            json={"requirements": "", "ai_enhance": False, "ai_provider": "openrouter"},
         )
         self.assertIn(resp.status_code, [400, 422])
 

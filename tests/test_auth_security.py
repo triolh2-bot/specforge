@@ -10,9 +10,8 @@ from specforge.extensions import db
 from specforge.repositories.auth_repository import get_auth_session_credential
 from specforge.services.auth_session import (
     ensure_workspace_context,
+    get_auth_status,
     get_or_create_auth_session_id,
-    get_valid_minimax_access_token,
-    store_minimax_tokens,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -26,16 +25,8 @@ class TestConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
-    MINIMAX_CLIENT_ID = ""
-    MINIMAX_CLIENT_SECRET = ""
-    MINIMAX_REDIRECT_URI = ""
-    MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
-    MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
-    MINIMAX_API_KEY = ""
-    MINIMAX_GROUP_ID = ""
-    MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
-    MINIMAX_MODEL = "MiniMax-M2.5"
+    OPENROUTER_API_KEY = ""
+    OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
@@ -58,41 +49,41 @@ class AuthSecurityTests(unittest.TestCase):
             db.engine.dispose()
         self.tempdir.cleanup()
 
-    def test_tokens_are_stored_encrypted_and_can_be_loaded(self):
+    def test_workspace_context_creates_server_side_credential(self):
         with self.app.test_request_context("/"):
-            ensure_workspace_context()
+            context = ensure_workspace_context()
             auth_session_id = get_or_create_auth_session_id()
-            store_minimax_tokens("access-token-plain", refresh_token="refresh-token-plain", expires_in=3600)
             credential = get_auth_session_credential(auth_session_id)
 
-            self.assertNotEqual(credential.encrypted_access_token, "access-token-plain")
-            self.assertNotEqual(credential.encrypted_refresh_token, "refresh-token-plain")
-            self.assertEqual(get_valid_minimax_access_token(), "access-token-plain")
+            self.assertIsNotNone(credential)
+            self.assertEqual(credential.workspace_id, context["workspace_id"])
+            self.assertEqual(credential.provider, "session")
+            self.assertIsNone(credential.encrypted_access_token)
+            self.assertIsNone(credential.encrypted_refresh_token)
 
-    def test_logout_clears_server_side_credentials(self):
+    def test_logout_clears_browser_session(self):
         with self.app.test_request_context("/"):
             session["auth_session_id"] = "session-123"
             ensure_workspace_context()
-            store_minimax_tokens("access-token-plain", refresh_token="refresh-token-plain", expires_in=3600)
 
         with self.client.session_transaction() as client_session:
             client_session["auth_session_id"] = "session-123"
-            client_session["minimax_authenticated"] = True
+            client_session["workspace_id"] = "workspace-123"
+            client_session["workspace_role"] = "owner"
 
         response = self.client.get("/auth/logout", follow_redirects=False)
         self.assertEqual(response.status_code, 302)
 
-        with self.app.app_context():
-            credential = get_auth_session_credential("session-123")
-            self.assertIsNotNone(credential)
-            self.assertIsNone(credential.encrypted_access_token)
-            self.assertIsNone(credential.encrypted_refresh_token)
+        with self.client.session_transaction() as client_session:
+            self.assertNotIn("auth_session_id", client_session)
+            self.assertNotIn("workspace_id", client_session)
+            self.assertNotIn("workspace_role", client_session)
 
     def test_auth_status_uses_server_side_credentials(self):
         with self.app.test_request_context("/"):
             session["auth_session_id"] = "session-abc"
             ensure_workspace_context()
-            store_minimax_tokens("access-token-plain", refresh_token="refresh-token-plain", expires_in=3600)
+            auth_state = get_auth_status()
 
         with self.client.session_transaction() as client_session:
             client_session["auth_session_id"] = "session-abc"
@@ -102,8 +93,8 @@ class AuthSecurityTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(body["authenticated"])
-        self.assertGreater(body["token_expires_in"], 0)
-        self.assertIn("workspace_id", body)
+        self.assertEqual(body["token_expires_in"], 0)
+        self.assertEqual(body["workspace_id"], auth_state["workspace_id"])
         self.assertEqual(body["role"], "owner")
 
 

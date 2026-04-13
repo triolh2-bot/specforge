@@ -101,6 +101,18 @@ def get_plan_price(plan_name: str) -> Optional[str]:
     return current_app.config.get(config_key)
 
 
+def is_paypal_configured() -> bool:
+    """Return True when the shared PayPal credentials are configured."""
+    client_id = current_app.config.get("PAYPAL_CLIENT_ID", "")
+    client_secret = current_app.config.get("PAYPAL_CLIENT_SECRET", "")
+    return bool(client_id and client_secret)
+
+
+def is_paypal_plan_available(plan_name: str) -> bool:
+    """Return True when checkout can be started for the given plan."""
+    return is_paypal_configured() and bool(get_paypal_plan_id(plan_name))
+
+
 # ---------------------------------------------------------------------------
 # Subscription creation
 # ---------------------------------------------------------------------------

@@ -5,21 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="SpecForge turns brief requirements into comprehensive Product Requirements Documents with AI-powered analysis.">
     <title>SpecForge — Requirements Analysis &amp; PRD Generation</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-                    colors: {
-                        brand: { 50: '#f0f0ff', 100: '#e0e0ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
-                        slate: { 850: '#1a1f2e' }
-                    }
-                }
-            }
-        }
-    </script>
+    <link href="/static/css/tailwind.css" rel="stylesheet">
+    <link href="/static/css/fonts.css" rel="stylesheet">
     <style>
         body { font-family: 'Inter', system-ui, sans-serif; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -27,7 +14,10 @@
         .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         @media (max-width: 768px) { .sidebar { display: none; } .sidebar.open { display: block; } }
+        @media (max-width: 360px) { #brief-modal .max-w-lg { max-width: 100%; } #brief-modal .p-6 { padding: 1rem; } }
         :focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 4px; }
+        .brief-disabled { pointer-events: none; opacity: 0.7; }
+        .input-error { border-color: #f87171 !important; box-shadow: 0 0 0 1px #f87171; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     </style>
 </head>
@@ -58,12 +48,6 @@
                     <span id="quota-text">Free plan</span>
                 </div>
 
-                <!-- Auth status -->
-                <div id="auth-status" class="flex items-center gap-2">
-                    <a href="/auth/minimax" class="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1" role="button">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        Connect AI
-                    </a>
                 </div>
             </div>
         </div>
@@ -178,7 +162,6 @@
                             <div class="flex items-center gap-2">
                                 <label for="ai-provider" class="text-xs text-gray-500">Provider:</label>
                                 <select id="ai-provider" class="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white focus:ring-2 focus:ring-brand-500 outline-none">
-                                    <option value="minimax">MiniMax</option>
                                     <option value="openrouter">OpenRouter</option>
                                 </select>
                             </div>
@@ -218,10 +201,11 @@
                             </button>
                         </div>
 
-                        <div class="space-y-4">
+                        <div id="brief-form-fields" class="space-y-4">
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Project Name <span class="text-red-500">*</span></label>
                                 <input id="brief-project-name" type="text" placeholder="e.g. TaskFlow, BakeryShop, MediTrack" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" />
+                                <p id="brief-project-name-error" class="hidden text-xs text-red-600 mt-1">Project name is required.</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Project Type</label>
@@ -239,6 +223,7 @@
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Core Idea <span class="text-red-500">*</span></label>
                                 <textarea id="brief-core-idea" rows="3" placeholder="Describe what the product does in 1-3 sentences..." class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none resize-none"></textarea>
+                                <p id="brief-core-idea-error" class="hidden text-xs text-red-600 mt-1">Please add at least 10 characters.</p>
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 mb-1">Target Audience</label>
@@ -251,7 +236,13 @@
                         </div>
 
                         <div class="mt-6 flex items-center justify-between gap-3">
-                            <p class="text-xs text-gray-400">Uses your selected AI provider</p>
+                            <p id="brief-progress" class="hidden text-xs text-brand-600 font-medium">Generating brief... please wait.</p>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="switchView('settings')" class="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 transition" title="Configure AI provider in settings">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.616 2.924-1.616 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.616.426 1.616 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.616-2.924 1.616-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.616-.426-1.616-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    AI Provider
+                                </button>
+                            </div>
                             <div class="flex gap-2">
                                 <button onclick="closeBriefModal()" type="button" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium rounded-lg hover:bg-gray-100 transition">Cancel</button>
                                 <button id="brief-generate-btn" onclick="generateBrief()" type="button" class="px-5 py-2 text-sm font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg transition disabled:opacity-50 flex items-center gap-2">
@@ -372,7 +363,13 @@
                     <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Analysis History</h1>
                     <p class="text-gray-500 mt-1">View and manage your past requirement analyses.</p>
                 </div>
-                <div id="history-list" class="space-y-3">
+                <div id="history-list" class="space-y-3"></div>
+                <div class="mt-6 flex justify-center">
+                    <button id="history-load-more" onclick="loadMoreHistory()" class="hidden px-4 py-2 text-sm font-medium text-brand-600 border border-brand-200 rounded-lg hover:bg-brand-50">
+                        Load More
+                    </button>
+                </div>
+                <div id="history-empty" class="text-center py-16 hidden">
                     <div id="history-empty" class="text-center py-16">
                         <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         <p class="text-gray-500 font-medium">No analyses yet</p>
@@ -391,43 +388,44 @@
 
                 <div class="space-y-6">
                     <!-- Quota Card -->
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Usage &amp; Quota</h2>
+                    <div class="bg-white rounded-xl border border-gray-200 pt-6 pb-10">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4 px-6">Usage &amp; Quota</h2>
                         <div id="quota-details" class="space-y-3">
-                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <div class="flex items-center justify-between py-2 px-6 border-b border-gray-100">
                                 <span class="text-sm text-gray-600">Plan</span>
                                 <span id="settings-plan" class="text-sm font-medium text-gray-900">-</span>
                             </div>
-                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <div class="flex items-center justify-between py-2 px-6 border-b border-gray-100">
                                 <span class="text-sm text-gray-600">Analyses this month</span>
                                 <span id="settings-analyses" class="text-sm font-medium text-gray-900">-</span>
                             </div>
-                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <div class="flex items-center justify-between py-2 px-6 border-b border-gray-100">
                                 <span class="text-sm text-gray-600">AI enhancements this month</span>
                                 <span id="settings-ai" class="text-sm font-medium text-gray-900">-</span>
                             </div>
-                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                            <div class="flex items-center justify-between py-2 px-6 border-b border-gray-100">
                                 <span class="text-sm text-gray-600">Exports this month</span>
                                 <span id="settings-exports" class="text-sm font-medium text-gray-900">-</span>
                             </div>
                         </div>
 
                         <!-- Upgrade buttons -->
-                        <div id="upgrade-section" class="mt-6 pt-4 border-t border-gray-100">
+                        <div id="upgrade-section" class="mt-6 pt-4 border-t border-gray-100 px-6">
                             <p class="text-sm font-medium text-gray-700 mb-3">Upgrade your plan</p>
                             <div class="flex flex-wrap gap-3">
-                                <button onclick="subscribePaypal('pro')" class="flex-1 min-w-[140px] bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition text-center">
+                                <button id="upgrade-pro-btn" onclick="subscribePaypal('pro')" class="flex-1 min-w-[140px] bg-brand-600 hover:bg-brand-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition text-center">
                                     Pro — $19.99/mo
                                 </button>
-                                <button onclick="subscribePaypal('enterprise')" class="flex-1 min-w-[140px] bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition text-center">
+                                <button id="upgrade-enterprise-btn" onclick="subscribePaypal('enterprise')" class="flex-1 min-w-[140px] bg-gray-900 hover:bg-gray-800 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition text-center">
                                     Enterprise — $99.99/mo
                                 </button>
                             </div>
                             <p class="text-xs text-gray-400 mt-2">Powered by PayPal · Cancel anytime</p>
+                            <p id="upgrade-status" class="hidden text-xs text-amber-600 mt-2"></p>
                         </div>
 
                         <!-- Cancel subscription (shown when active) -->
-                        <div id="cancel-section" class="hidden mt-6 pt-4 border-t border-gray-100">
+                        <div id="cancel-section" class="hidden mt-6 pt-4 border-t border-gray-100 px-6">
                             <button onclick="cancelSubscription()" class="text-sm text-red-600 hover:text-red-700 font-medium">
                                 Cancel subscription
                             </button>
@@ -435,9 +433,9 @@
                     </div>
 
                     <!-- Data Rights Card -->
-                    <div class="bg-white rounded-xl border border-gray-200 p-5 md:p-6">
-                        <h2 class="text-lg font-semibold text-gray-900 mb-4">Data &amp; Privacy</h2>
-                        <div class="space-y-3">
+                    <div class="bg-white rounded-xl border border-gray-200 pt-6 pb-10">
+                        <h2 class="text-lg font-semibold text-gray-900 mb-4 px-6">Data &amp; Privacy</h2>
+                        <div class="space-y-3 px-6">
                             <button onclick="exportMyData()" class="w-full text-left flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition">
                                 <div>
                                     <p class="text-sm font-medium text-gray-900">Export My Data</p>
@@ -580,22 +578,11 @@
                 const data = await resp.json();
                 aiConnected = data.authenticated;
 
-                const authSection = $('#auth-status');
-                if (data.authenticated) {
                     authSection.innerHTML = `
                         <div class="flex items-center gap-2 text-sm">
-                            <span class="w-2 h-2 bg-green-500 rounded-full" aria-hidden="true"></span>
-                            <span class="text-gray-600 text-xs">AI Connected</span>
+                            <span class="w-2 h-2 bg-gray-300 rounded-full" aria-hidden="true"></span>
+                            <span class="text-gray-400 text-xs">AI Ready</span>
                         </div>`;
-                    $('#ai-enhance').checked = true;
-                    $('#ai-hint').textContent = '(connected)';
-                } else {
-                    authSection.innerHTML = `
-                        <a href="/auth/minimax" class="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                            Connect AI
-                        </a>`;
-                }
             } catch (e) {
                 // Auth check failure is non-fatal
             }
@@ -700,15 +687,21 @@
         };
 
         async function pollJob(jobId) {
-            const maxPolls = 60;
+            const maxPolls = 120;  // Increased from 60 to 120 (4 minutes max)
             let polls = 0;
-            
+
             const pollInterval = setInterval(async () => {
                 polls++;
+                // Update loading text every 10 polls to show progress
+                if (polls % 10 === 0) {
+                    const remaining = maxPolls - polls;
+                    $('#loading-detail').textContent = `Still processing... (${Math.ceil(remaining * 2)}s remaining)`;
+                }
+                
                 try {
                     const resp = await fetch(`/api/jobs/${jobId}`);
                     const data = await resp.json();
-                    
+
                     if (data.status === 'completed') {
                         clearInterval(pollInterval);
                         if (data.result) {
@@ -1005,19 +998,26 @@
         // ========================
         // History
         // ========================
+        let historyOffset = 0;
+        const historyLimit = 50;
+
         async function loadHistory() {
             try {
-                const resp = await fetch('/api/analyses?limit=50');
+                historyOffset = 0;
+                const resp = await fetch(`/api/analyses?limit=${historyLimit}&offset=${historyOffset}`);
                 if (!resp.ok) return;
                 const data = await resp.json();
                 const items = data.items || [];
                 const countEl = $('#history-count');
                 const listEl = $('#history-list');
                 const emptyEl = $('#history-empty');
+                const loadMoreBtn = $('#history-load-more');
 
                 if (items.length === 0) {
                     show(emptyEl);
                     hide(countEl);
+                    hide(loadMoreBtn);
+                    listEl.innerHTML = '';
                     return;
                 }
 
@@ -1040,6 +1040,50 @@
                         </div>
                     </div>
                 `).join('');
+                historyOffset = items.length;
+                if (data.pagination?.has_more) {
+                    show(loadMoreBtn);
+                } else {
+                    hide(loadMoreBtn);
+                }
+            } catch (e) {}
+        }
+
+        async function loadMoreHistory() {
+            try {
+                const resp = await fetch(`/api/analyses?limit=${historyLimit}&offset=${historyOffset}`);
+                if (!resp.ok) return;
+                const data = await resp.json();
+                const items = data.items || [];
+                const listEl = $('#history-list');
+                const loadMoreBtn = $('#history-load-more');
+
+                if (items.length === 0) {
+                    hide(loadMoreBtn);
+                    return;
+                }
+
+                listEl.insertAdjacentHTML('beforeend', items.map(item => `
+                    <div class="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition cursor-pointer" onclick="viewAnalysis('${item.analysis_id}')">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate">${escapeHtml(item.requirements_preview || 'Analysis')}</p>
+                                <p class="text-xs text-gray-400 mt-1">
+                                    <span class="capitalize">${escapeHtml(item.domain)}</span> Â· RMS ${item.rms}/100 Â· ${new Date(item.created_at).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded-full ${item.ai_enhance_requested ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500'}">
+                                ${item.ai_enhance_requested ? 'AI' : 'Rule'}
+                            </span>
+                        </div>
+                    </div>
+                `).join(''));
+                historyOffset += items.length;
+                if (data.pagination?.has_more) {
+                    show(loadMoreBtn);
+                } else {
+                    hide(loadMoreBtn);
+                }
             } catch (e) {}
         }
 
@@ -1060,20 +1104,93 @@
         // ========================
         async function loadSettings() {
             try {
-                const resp = await fetch('/api/billing/quota');
-                if (!resp.ok) return;
-                const data = await resp.json();
-                $('#settings-plan').textContent = data.plan;
-                $('#settings-analyses').textContent = `${data.analyses.used} / ${data.analyses.limit}`;
-                $('#settings-ai').textContent = `${data.ai_enhancements.used} / ${data.ai_enhancements.limit}`;
-                $('#settings-exports').textContent = `${data.exports.used} / ${data.exports.limit}`;
+                const [quotaResp, plansResp, subscriptionResp] = await Promise.all([
+                    fetch('/api/billing/quota'),
+                    fetch('/api/billing/plans'),
+                    fetch('/api/billing/subscription')
+                ]);
+
+                if (quotaResp.ok) {
+                    const data = await quotaResp.json();
+                    $('#settings-plan').textContent = data.plan;
+                    $('#settings-analyses').textContent = `${data.analyses.used} / ${data.analyses.limit}`;
+                    $('#settings-ai').textContent = `${data.ai_enhancements.used} / ${data.ai_enhancements.limit}`;
+                    $('#settings-exports').textContent = `${data.exports.used} / ${data.exports.limit}`;
+                }
+
+                const plansData = plansResp.ok ? await plansResp.json() : null;
+                const subscriptionData = subscriptionResp.ok ? await subscriptionResp.json() : null;
+                syncBillingSettings(plansData, subscriptionData);
             } catch (e) {}
+        }
+
+        function setUpgradeButtonState(planName, planData) {
+            const button = $(`#upgrade-${planName}-btn`);
+            if (!button) return;
+
+            const title = planName === 'pro' ? 'Pro' : 'Enterprise';
+            const price = planData?.price || 'Contact sales';
+            button.textContent = `${title} - ${price}`;
+
+            const available = Boolean(planData?.checkout_available);
+            button.disabled = !available;
+            button.classList.toggle('opacity-60', !available);
+            button.classList.toggle('cursor-not-allowed', !available);
+        }
+
+        function syncBillingSettings(plansData, subscriptionData) {
+            const proPlan = plansData?.plans?.pro || null;
+            const enterprisePlan = plansData?.plans?.enterprise || null;
+            const billingConfigured = Boolean(plansData?.billing?.configured);
+            const activePlan = subscriptionData?.status === 'active' ? subscriptionData?.plan : 'free';
+
+            setUpgradeButtonState('pro', proPlan);
+            setUpgradeButtonState('enterprise', enterprisePlan);
+
+            const hasAnyCheckout = Boolean(proPlan?.checkout_available || enterprisePlan?.checkout_available);
+            const upgradeStatus = $('#upgrade-status');
+            const upgradeSection = $('#upgrade-section');
+            const cancelSection = $('#cancel-section');
+            const paypalCopy = document.querySelector('#upgrade-section p.text-xs.text-gray-400.mt-2');
+
+            if (paypalCopy) {
+                paypalCopy.textContent = 'Powered by PayPal. Cancel anytime.';
+            }
+
+            if (activePlan && activePlan !== 'free') {
+                hide(upgradeSection);
+                show(cancelSection);
+                hide(upgradeStatus);
+                return;
+            }
+
+            show(upgradeSection);
+            hide(cancelSection);
+
+            if (hasAnyCheckout) {
+                if (paypalCopy) show(paypalCopy);
+                hide(upgradeStatus);
+                return;
+            }
+
+            if (paypalCopy) hide(paypalCopy);
+            upgradeStatus.textContent = billingConfigured
+                ? 'Paid plans are not configured yet. Add the PayPal plan IDs to enable checkout.'
+                : 'Paid plans are unavailable until PayPal billing is configured.';
+            show(upgradeStatus);
         }
 
         // ========================
         // PayPal subscription
         // ========================
         window.subscribePaypal = async function(plan) {
+            const button = document.getElementById(`upgrade-${plan}-btn`);
+            if (button?.disabled) {
+                const status = $('#upgrade-status');
+                showError('Subscription unavailable', status?.textContent || 'This plan is not available for checkout right now.');
+                return;
+            }
+
             try {
                 const resp = await fetch('/api/billing/subscribe', {
                     method: 'POST',
@@ -1285,11 +1402,21 @@
         // ========================
         window.openBriefModal = function() {
             $('#brief-modal').classList.remove('hidden');
-            document.getElementById('brief-project-name').focus();
+            const nameInput = document.getElementById('brief-project-name');
+            const ideaInput = document.getElementById('brief-core-idea');
+            document.getElementById('brief-project-name-error').classList.add('hidden');
+            document.getElementById('brief-core-idea-error').classList.add('hidden');
+            nameInput.classList.remove('input-error');
+            ideaInput.classList.remove('input-error');
+            nameInput.focus();
         };
 
         window.closeBriefModal = function() {
             $('#brief-modal').classList.add('hidden');
+            const formFields = document.getElementById('brief-form-fields');
+            const progressMsg = document.getElementById('brief-progress');
+            if (formFields) formFields.classList.remove('brief-disabled');
+            if (progressMsg) progressMsg.classList.add('hidden');
         };
 
         // Close on Escape key
@@ -1307,16 +1434,41 @@
             const keyFeatures   = document.getElementById('brief-key-features').value.trim();
             const aiProvider    = document.getElementById('ai-provider').value;
 
+            const nameInput = document.getElementById('brief-project-name');
+            const ideaInput = document.getElementById('brief-core-idea');
+            const nameError = document.getElementById('brief-project-name-error');
+            const ideaError = document.getElementById('brief-core-idea-error');
+
+            nameInput.classList.remove('input-error');
+            ideaInput.classList.remove('input-error');
+            nameError.classList.add('hidden');
+            ideaError.classList.add('hidden');
+
             if (!projectName) {
-                document.getElementById('brief-project-name').focus();
+                nameInput.classList.add('input-error');
+                nameError.classList.remove('hidden');
+                nameInput.focus();
                 return;
             }
             if (!coreIdea || coreIdea.length < 10) {
-                document.getElementById('brief-core-idea').focus();
+                ideaInput.classList.add('input-error');
+                ideaError.classList.remove('hidden');
+                ideaInput.focus();
                 return;
             }
 
             const btn = document.getElementById('brief-generate-btn');
+            const formFields = document.getElementById('brief-form-fields');
+            const progressMsg = document.getElementById('brief-progress');
+            formFields.classList.add('brief-disabled');
+            progressMsg.classList.remove('hidden');
+            const fieldNodes = formFields.querySelectorAll('input, textarea, select, button');
+            fieldNodes.forEach(node => { node.disabled = true; });
+            const restoreFields = () => {
+                fieldNodes.forEach(node => { node.disabled = false; });
+                formFields.classList.remove('brief-disabled');
+                progressMsg.classList.add('hidden');
+            };
             btn.disabled = true;
             btn.innerHTML = '<svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg> Generating...';
 
@@ -1337,8 +1489,32 @@
                 const data = await resp.json();
 
                 if (!resp.ok || !data.success) {
-                    const msg = data.error?.message || data.error || 'Brief generation failed.';
-                    showError('Generation failed', msg);
+                    // Handle both string errors and object errors
+                    let errorMsg = 'Brief generation failed.';
+                    if (typeof data.error === 'string') {
+                        errorMsg = data.error;
+                    } else if (data.error?.message) {
+                        errorMsg = data.error.message;
+                    } else if (data.error) {
+                        errorMsg = JSON.stringify(data.error);
+                    }
+                    
+                    // Provide more helpful guidance
+                    let title = 'Generation failed';
+                    if (resp.status === 429) {
+                        title = 'AI Rate Limited';
+                        errorMsg += ' Please wait a moment and try again, or switch to another provider/model.';
+                    } else
+                    if (resp.status === 502) {
+                        title = 'AI Provider Error';
+                        errorMsg += ' Please check your API keys in Settings or try a different provider.';
+                    } else if (resp.status === 403) {
+                        title = 'Provider Not Allowed';
+                    } else if (resp.status === 400) {
+                        title = 'Invalid Input';
+                    }
+                    
+                    showError(title, errorMsg);
                     return;
                 }
 
@@ -1355,10 +1531,15 @@
                 document.getElementById('brief-core-idea').value = '';
                 document.getElementById('brief-target-audience').value = '';
                 document.getElementById('brief-key-features').value = '';
+                nameInput.classList.remove('input-error');
+                ideaInput.classList.remove('input-error');
+                nameError.classList.add('hidden');
+                ideaError.classList.add('hidden');
 
             } catch (err) {
                 showError('Network error', 'Could not reach the server. Please try again.');
             } finally {
+                restoreFields();
                 btn.disabled = false;
                 btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg> Generate';
             }

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS analysis_records (
     request_id VARCHAR(64),
     status VARCHAR(32) NOT NULL DEFAULT 'completed',
     requirements_text TEXT NOT NULL,
-    ai_enhance_requested BOOLEAN NOT NULL DEFAULT 0,
+    ai_enhance_requested BOOLEAN NOT NULL DEFAULT FALSE,
     ai_provider VARCHAR(64),
     domain VARCHAR(64) NOT NULL,
     rms INTEGER NOT NULL,

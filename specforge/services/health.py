@@ -117,27 +117,22 @@ def check_job_queue(backlog_warning_threshold=100, backlog_critical_threshold=50
     }
 
 
-def check_minimax_provider_configuration(config):
-    oauth_fields = [
-        config.get("MINIMAX_CLIENT_ID", ""),
-        config.get("MINIMAX_CLIENT_SECRET", ""),
-        config.get("MINIMAX_REDIRECT_URI", ""),
-    ]
-    api_key = config.get("MINIMAX_API_KEY", "")
-    oauth_configured = all(field for field in oauth_fields)
+def check_openrouter_provider_configuration(config):
+    api_key = config.get("OPENROUTER_API_KEY", "")
+    model = config.get("OPENROUTER_MODEL", "")
+    site_url = config.get("OPENROUTER_SITE_URL", "")
+
     api_key_configured = bool(api_key)
+    model_configured = bool(model)
 
     missing = []
-    if not oauth_configured:
-        if not config.get("MINIMAX_CLIENT_ID", ""):
-            missing.append("MINIMAX_CLIENT_ID")
-        if not config.get("MINIMAX_CLIENT_SECRET", ""):
-            missing.append("MINIMAX_CLIENT_SECRET")
-        if not config.get("MINIMAX_REDIRECT_URI", ""):
-            missing.append("MINIMAX_REDIRECT_URI")
+    if not api_key:
+        missing.append("OPENROUTER_API_KEY")
+    if not model:
+        missing.append("OPENROUTER_MODEL")
 
-    status = "ok" if oauth_configured or api_key_configured else "degraded"
-    message = "MiniMax provider configured" if status == "ok" else "MiniMax provider is not fully configured"
+    status = "ok" if api_key_configured else "degraded"
+    message = "OpenRouter provider configured" if status == "ok" else "OpenRouter provider is not fully configured"
 
     return {
         "name": "provider",
@@ -145,9 +140,10 @@ def check_minimax_provider_configuration(config):
         "required": False,
         "message": message,
         "details": {
-            "oauth_configured": oauth_configured,
             "api_key_configured": api_key_configured,
-            "available_modes": [mode for mode, enabled in (("oauth", oauth_configured), ("api_key", api_key_configured)) if enabled],
+            "model_configured": model_configured,
+            "site_url_configured": bool(site_url),
+            "available_modes": ["api_key"] if api_key_configured else [],
             "missing_fields": missing,
         },
     }
@@ -182,7 +178,7 @@ def build_readiness_report(config):
         backlog_critical_threshold=config.get("HEALTH_QUEUE_BACKLOG_CRITICAL", 500),
         failed_jobs_critical_threshold=config.get("HEALTH_FAILED_JOBS_CRITICAL", 25),
     )
-    provider = check_minimax_provider_configuration(config)
+    provider = check_openrouter_provider_configuration(config)
     checks = [database, migrations, queue, provider]
     status = summarize_health(checks)
     ready = status != "down"

@@ -23,7 +23,11 @@ def main():
     app = create_app()
     with app.app_context():
         print("SpecForge worker started. Press Ctrl+C to stop gracefully.")
-        worker_loop(shutdown_flag=lambda: _shutdown_requested)
+        worker_loop(
+            shutdown_flag=lambda: _shutdown_requested,
+            stale_check_interval_seconds=app.config.get("JOB_STALE_CHECK_INTERVAL_SECONDS", 300),
+            stale_minutes=app.config.get("JOB_STALE_MINUTES", 15),
+        )
 
 
 if __name__ == "__main__":

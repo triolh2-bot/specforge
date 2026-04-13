@@ -9,16 +9,8 @@ class TestConfig:
     SECRET_KEY = "test-secret"
     TESTING = True
     PORT = 5000
-    MINIMAX_CLIENT_ID = ""
-    MINIMAX_CLIENT_SECRET = ""
-    MINIMAX_REDIRECT_URI = ""
-    MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
-    MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
-    MINIMAX_API_KEY = ""
-    MINIMAX_GROUP_ID = ""
-    MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
-    MINIMAX_MODEL = "MiniMax-M2.5"
+    OPENROUTER_API_KEY = ""
+    OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     MIGRATIONS_DIR = "migrations"
@@ -46,12 +38,12 @@ class PrdGenerationTests(unittest.TestCase):
         self.assertIn("functional_requirements", result["prd"])
 
     def test_generate_prd_marks_fallback_when_ai_call_returns_nothing(self):
-        config = type("Config", (TestConfig,), {"MINIMAX_API_KEY": "test-key"})
+        config = type("Config", (TestConfig,), {"OPENROUTER_API_KEY": "test-key"})
         app = create_app(config)
 
         mock_provider = MagicMock()
-        mock_provider.name = "minimax"
-        mock_provider.display_name = "MiniMax AI"
+        mock_provider.name = "openrouter"
+        mock_provider.display_name = "OpenRouter"
         mock_provider.is_configured.return_value = True
         mock_provider.health_check.return_value = MagicMock(value=lambda: "healthy")
         mock_provider.capabilities = ()
@@ -71,10 +63,10 @@ class PrdGenerationTests(unittest.TestCase):
 
         self.assertEqual(result["domain"], "saas")
         self.assertEqual(result["ai_enhanced"]["status"], "fallback")
-        self.assertEqual(result["ai_enhanced"]["provider"], "minimax")
+        self.assertEqual(result["ai_enhanced"]["provider"], "openrouter")
 
     def test_generate_prd_uses_ai_questions_when_provider_returns_them(self):
-        config = type("Config", (TestConfig,), {"MINIMAX_API_KEY": "test-key"})
+        config = type("Config", (TestConfig,), {"OPENROUTER_API_KEY": "test-key"})
         app = create_app(config)
 
         ai_result = {
@@ -93,8 +85,8 @@ class PrdGenerationTests(unittest.TestCase):
         }
 
         mock_provider = MagicMock()
-        mock_provider.name = "minimax"
-        mock_provider.display_name = "MiniMax AI"
+        mock_provider.name = "openrouter"
+        mock_provider.display_name = "OpenRouter"
         mock_provider.is_configured.return_value = True
         mock_provider.health_check.return_value = MagicMock(value=lambda: "healthy")
         mock_provider.capabilities = ()

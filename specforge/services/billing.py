@@ -11,11 +11,12 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
+from uuid import uuid4
 
 from flask import session
 
 from ..extensions import db
-from ..models import QuotaUsage
+from ..models import QuotaReservation, QuotaUsage, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ PLANS: dict[str, PlanLimits] = {
         exports_per_month=5,
         max_workspace_members=1,
         share_link_max_age_days=3,
-        ai_providers=("minimax", "openrouter"),
+        ai_providers=("openrouter",),
     ),
     "pro": PlanLimits(
         analyses_per_month=100,
@@ -52,7 +53,7 @@ PLANS: dict[str, PlanLimits] = {
         exports_per_month=50,
         max_workspace_members=10,
         share_link_max_age_days=30,
-        ai_providers=("minimax", "openrouter"),
+        ai_providers=("openrouter",),
         priority_queue=True,
     ),
     "enterprise": PlanLimits(
@@ -61,7 +62,7 @@ PLANS: dict[str, PlanLimits] = {
         exports_per_month=999999,
         max_workspace_members=999,
         share_link_max_age_days=365,
-        ai_providers=("minimax", "openrouter"),
+        ai_providers=("openrouter",),
         priority_queue=True,
     ),
 }
@@ -120,6 +121,34 @@ def _record_usage(workspace_id: str, metric: str, amount: int = 1) -> None:
     )
     db.session.add(usage)
     db.session.commit()
+
+
+def _count_active_reservations(workspace_id: str, metric: str, now: Optional[datetime] = None) -> int:
+    now = now or utcnow()
+    return (
+        QuotaReservation.query.filter_by(
+            workspace_id=workspace_id,
+            metric=metric,
+            status="reserved",
+        )
+        .filter(QuotaReservation.expires_at >= now)
+        .count()
+    )
+
+
+def _expire_stale_reservations(now: Optional[datetime] = None) -> int:
+    now = now or utcnow()
+    stale = (
+        QuotaReservation.query.filter_by(status="reserved")
+        .filter(QuotaReservation.expires_at < now)
+        .all()
+    )
+    for reservation in stale:
+        reservation.status = "expired"
+        reservation.released_at = now
+    if stale:
+        db.session.commit()
+    return len(stale)
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +213,98 @@ def consume_quota(workspace_id: str, metric: str, plan: Optional[str] = None) ->
     """
     check_quota(workspace_id, metric, plan=plan)
     _record_usage(workspace_id, metric)
+
+
+def reserve_quota(
+    workspace_id: str,
+    metric: str,
+    plan: Optional[str] = None,
+    reservation_key: Optional[str] = None,
+    ttl_minutes: int = 60,
+) -> str:
+    """Reserve quota capacity without consuming it yet."""
+    from flask import current_app
+
+    enforcement = current_app.config.get("QUOTA_ENFORCEMENT", "strict")
+    if enforcement == "off":
+        return reservation_key or f"{metric}-{uuid4().hex}"
+
+    _expire_stale_reservations()
+    if plan is None:
+        plan = get_workspace_plan(workspace_id)
+
+    limits = get_plan_limits(plan)
+    metric_map = {
+        "analysis": limits.analyses_per_month,
+        "ai_enhancement": limits.ai_enhancements_per_month,
+        "export": limits.exports_per_month,
+    }
+    limit = metric_map.get(metric)
+    if limit is None:
+        return reservation_key or f"{metric}-{uuid4().hex}"
+
+    current = _get_usage_count(workspace_id, metric) + _count_active_reservations(workspace_id, metric)
+    if current >= limit:
+        if enforcement == "soft":
+            logger.warning("Soft quota reservation exceeded: %s (%d/%d) on '%s' plan", metric, current, limit, plan)
+            return reservation_key or f"{metric}-{uuid4().hex}"
+        raise QuotaExceededError(metric=metric, limit=limit, current=current, plan=plan)
+
+    key = reservation_key or f"{metric}-{uuid4().hex}"
+    reservation = QuotaReservation(
+        workspace_id=workspace_id,
+        metric=metric,
+        reservation_key=key,
+        expires_at=utcnow() + timedelta(minutes=max(1, ttl_minutes)),
+    )
+    db.session.add(reservation)
+    db.session.commit()
+    return key
+
+
+def consume_reserved_quota(workspace_id: str, metric: str, reservation_key: Optional[str]) -> None:
+    """Consume a previously reserved quota unit."""
+    if not reservation_key:
+        consume_quota(workspace_id, metric)
+        return
+
+    reservation = QuotaReservation.query.filter_by(
+        workspace_id=workspace_id,
+        metric=metric,
+        reservation_key=reservation_key,
+    ).one_or_none()
+
+    if reservation is None or reservation.status != "reserved":
+        consume_quota(workspace_id, metric)
+        return
+
+    now = utcnow()
+    reservation.status = "consumed"
+    reservation.consumed_at = now
+    usage = QuotaUsage(
+        workspace_id=workspace_id,
+        metric=metric,
+        amount=reservation.amount,
+        used_at=now,
+    )
+    db.session.add(usage)
+    db.session.commit()
+
+
+def release_quota_reservation(workspace_id: str, metric: str, reservation_key: Optional[str]) -> None:
+    """Release a reservation after a failed or canceled operation."""
+    if not reservation_key:
+        return
+    reservation = QuotaReservation.query.filter_by(
+        workspace_id=workspace_id,
+        metric=metric,
+        reservation_key=reservation_key,
+    ).one_or_none()
+    if reservation is None or reservation.status != "reserved":
+        return
+    reservation.status = "released"
+    reservation.released_at = utcnow()
+    db.session.commit()
 
 
 def get_quota_status(workspace_id: str, plan: Optional[str] = None) -> dict[str, Any]:

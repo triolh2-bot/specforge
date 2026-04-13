@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS analysis_jobs (
     request_id VARCHAR(64),
     analysis_id VARCHAR(36),
     requirements_text TEXT NOT NULL,
-    ai_enhance_requested BOOLEAN NOT NULL DEFAULT 0,
+    ai_enhance_requested BOOLEAN NOT NULL DEFAULT FALSE,
     ai_provider VARCHAR(64),
     status VARCHAR(32) NOT NULL DEFAULT 'queued',
     attempt_count INTEGER NOT NULL DEFAULT 0,

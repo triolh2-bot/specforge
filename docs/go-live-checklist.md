@@ -38,7 +38,6 @@
 | Flag | Default | Description | Kill Switch |
 |------|---------|-------------|-------------|
 | `ai_enhancement` | `true` | Enable AI-powered PRD enhancement | Set env `AI_ENHANCEMENT_ENABLED=false` |
-| `minimax_oauth` | `false` | Enable MiniMax OAuth flow | Set env `MINIMAX_OAUTH_ENABLED=false` |
 | `export_sharing` | `true` | Enable shareable export links | Set env `EXPORT_SHARING_ENABLED=false` |
 | `analytics_tracking` | `true` | Enable product analytics | Set env `ANALYTICS_ENABLED=false` |
 | `quota_enforcement` | `true` | Enforce billing plan quotas | Set env `QUOTA_ENFORCEMENT=soft` |
@@ -82,7 +81,7 @@ export EXPORT_SHARING_ENABLED=false
 ### Scenario 1: AI Provider Outage
 **Symptoms:** All AI-enhanced analyses return 503 or fallback mode.
 1. Check `GET /health/ready` — verify `providers` check status
-2. Check logs for `MiniMax API call failed` errors
+2. Check logs for OpenRouter API failures or rate-limit errors
 3. If provider is down:
    - Set `AI_ENHANCEMENT_ENABLED=false` to disable AI enhancement
    - Users will receive rule-based fallback automatically

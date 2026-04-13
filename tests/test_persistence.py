@@ -13,16 +13,8 @@ class TestConfig:
     SECRET_KEY = "test-secret"
     TESTING = True
     PORT = 5000
-    MINIMAX_CLIENT_ID = ""
-    MINIMAX_CLIENT_SECRET = ""
-    MINIMAX_REDIRECT_URI = ""
-    MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
-    MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
-    MINIMAX_API_KEY = ""
-    MINIMAX_GROUP_ID = ""
-    MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
-    MINIMAX_MODEL = "MiniMax-M2.5"
+    OPENROUTER_API_KEY = ""
+    OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
@@ -51,7 +43,7 @@ class PersistenceTests(unittest.TestCase):
             json={
                 "requirements": "I want an e-commerce site for my bakery with ordering and an admin dashboard.",
                 "ai_enhance": False,
-                "ai_provider": "minimax",
+                "ai_provider": "openrouter",
             },
         )
         body = response.get_json()
@@ -75,7 +67,7 @@ class PersistenceTests(unittest.TestCase):
                 json={
                     "requirements": f"I need a {domain} with admin features and reporting.",
                     "ai_enhance": False,
-                    "ai_provider": "minimax",
+                    "ai_provider": "openrouter",
                 },
             )
 

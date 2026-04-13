@@ -66,38 +66,66 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
     app.extensions["started_at"] = time.time()
 
-    logging.basicConfig(level=logging.INFO)
     configure_logging(app)
     logger = logging.getLogger(__name__)
 
-    db.init_app(app)
-    # Reset and re-register providers for each app instance (test isolation)
-    registry.reset()
-    register_builtin_providers()
-    register_builtin_templates()
-    app.before_request(assign_request_id)
-    app.before_request(before_request_observer)
-    app.before_request(assign_rate_limit_client_id)
-    app.before_request(enforce_content_length)
-    app.before_request(_csrf_origin_check)
-    app.after_request(attach_request_id)
-    app.after_request(after_request_observer)
-    register_error_handlers(app, logger)
-    app.register_blueprint(main_bp)
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(api_bp)
-    app.register_blueprint(analyses_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(analytics_bp)
-    app.register_blueprint(billing_bp)
-    app.register_blueprint(exports_bp)
-    app.register_blueprint(jobs_bp)
-    app.register_blueprint(legal_bp)
-    app.register_blueprint(members_bp)
-    app.register_blueprint(metrics_bp)
-    run_migrations(app)
+    try:
+        db.init_app(app)
+        # Reset and re-register providers for each app instance (test isolation)
+        registry.reset()
+        register_builtin_providers()
+        register_builtin_templates()
+        app.before_request(assign_request_id)
+        app.before_request(before_request_observer)
+        app.before_request(assign_rate_limit_client_id)
+        app.before_request(enforce_content_length)
+        app.before_request(_csrf_origin_check)
+        app.after_request(attach_request_id)
+        app.after_request(after_request_observer)
+        register_error_handlers(app, logger)
+        app.register_blueprint(main_bp)
+        app.register_blueprint(auth_bp)
+        app.register_blueprint(api_bp)
+        app.register_blueprint(analyses_bp)
+        app.register_blueprint(admin_bp)
+        app.register_blueprint(analytics_bp)
+        app.register_blueprint(billing_bp)
+        app.register_blueprint(exports_bp)
+        app.register_blueprint(jobs_bp)
+        app.register_blueprint(legal_bp)
+        app.register_blueprint(members_bp)
+        app.register_blueprint(metrics_bp)
+        
+        # Run migrations with error handling - don't fail app startup if DB isn't ready
+        try:
+            run_migrations(app)
+        except Exception as migration_error:
+            logger.error("Migration failed during startup (will retry lazily): %s", migration_error, exc_info=True)
+            # Store migration error to retry lazily via before_request
+            app.extensions["migration_pending"] = True
+            app.extensions["migration_error"] = str(migration_error)
+            
+            # Add lazy migration retry hook
+            @app.before_request
+            def retry_migrations_if_pending():
+                if app.extensions.get("migration_pending"):
+                    try:
+                        logger.info("Retrying pending migrations...")
+                        run_migrations(app)
+                        app.extensions["migration_pending"] = False
+                        app.extensions.pop("migration_error", None)
+                        logger.info("Migrations completed successfully")
+                    except Exception as retry_error:
+                        logger.error("Lazy migration retry failed: %s", retry_error)
+                        # Don't block requests - migrations will retry on next request
 
-    return app
+        if app.config.get("QUOTA_ENFORCEMENT") == "off":
+            logger.warning("Quota enforcement is OFF — do not use in production.")
+
+        return app
+    except Exception as e:
+        logger.critical("Failed to create app: %s", str(e), exc_info=True)
+        raise
 
 
 def register_error_handlers(app, logger):
@@ -154,5 +182,10 @@ def register_error_handlers(app, logger):
 
     @app.errorhandler(Exception)
     def handle_exception(error):
-        logger.error("Unhandled: %s", str(error))
+        logger.error("Unhandled exception: %s", str(error), exc_info=True)
+        # In debug mode, include the actual error message for easier debugging
+        if app.debug:
+            import traceback
+            error_detail = f"{str(error)}\n\n{traceback.format_exc()}"
+            return error_response(error_detail, status=500, code="internal_server_error")
         return error_response("Internal Server Error", status=500, code="internal_server_error")

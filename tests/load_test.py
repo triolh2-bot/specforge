@@ -109,7 +109,7 @@ def run_load_test(num_requests=50, concurrent=5):
             # Analyze request
             status, duration = _post_json(
                 f"{base_url}/analyze",
-                {"requirements": sample, "ai_enhance": False, "ai_provider": "minimax"},
+                {"requirements": sample, "ai_enhance": False, "ai_provider": "openrouter"},
             )
             with lock:
                 if 200 <= status < 300:

@@ -10,8 +10,6 @@ if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
     print(f"SpecForge running on http://localhost:{port}")
-    print(f"   MiniMax OAuth:   {'[OK]' if app.config['MINIMAX_CLIENT_ID'] else '[MISSING]'}")
-    print(f"   MiniMax API Key: {'[OK]' if app.config['MINIMAX_API_KEY'] else '[MISSING]'}")
     print(f"   OpenRouter API:  {'[OK]' if app.config['OPENROUTER_API_KEY'] else '[MISSING]'}")
     print(f"   Quota Mode:      {app.config.get('QUOTA_ENFORCEMENT', 'strict')}")
     print(f"   Debug Mode:      {debug}")

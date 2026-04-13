@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS workspaces (
     name VARCHAR(128) NOT NULL
 );
 
-INSERT OR IGNORE INTO workspaces (id, name) VALUES ('legacy-workspace', 'Legacy Workspace');
+INSERT INTO workspaces (id, name) VALUES ('legacy-workspace', 'Legacy Workspace') ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE analysis_records ADD COLUMN workspace_id VARCHAR(36) NOT NULL DEFAULT 'legacy-workspace';
 ALTER TABLE analysis_jobs ADD COLUMN workspace_id VARCHAR(36) NOT NULL DEFAULT 'legacy-workspace';

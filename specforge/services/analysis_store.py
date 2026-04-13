@@ -1,8 +1,10 @@
 from ..repositories.analysis_repository import (
+    approve_analysis_version,
     analysis_record_to_payload,
     count_analysis_records,
     create_analysis_record,
     get_analysis_record,
+    get_analysis_version,
     list_analysis_records,
     update_analysis_record,
 )
@@ -27,18 +29,38 @@ def refine_analysis_record(analysis_id, workspace_id, result_ai_enhanced, new_pr
     record = get_analysis_record(analysis_id, workspace_id)
     if not record:
         return None
-    record = update_analysis_record(record, result_ai_enhanced, new_prd, answers)
-    return analysis_record_to_payload(record)
+    result = dict(new_prd)
+    result["ai_enhanced"] = result_ai_enhanced
+    record = update_analysis_record(record, result_ai_enhanced, result.get("prd"), answers, result=result)
+    return analysis_record_to_payload(record, version=get_analysis_version(record))
 
 
-def fetch_analysis(analysis_id, workspace_id):
+def fetch_analysis(analysis_id, workspace_id, version_selector="current", include_versions=False):
     record = get_analysis_record(analysis_id, workspace_id)
     if not record:
         return None
-    return analysis_record_to_payload(record)
+    version = None
+    if version_selector == "approved":
+        version = get_analysis_version(record, approved=True)
+    elif isinstance(version_selector, int):
+        version = get_analysis_version(record, version_number=version_selector)
+    else:
+        version = get_analysis_version(record)
+    return analysis_record_to_payload(record, version=version, include_versions=include_versions)
+
+
+def approve_analysis(analysis_id, workspace_id, version_number=None):
+    record = get_analysis_record(analysis_id, workspace_id)
+    if not record:
+        return None
+    version = approve_analysis_version(record, version_number=version_number)
+    if not version:
+        return None
+    return analysis_record_to_payload(record, version=version, include_versions=True)
 
 
 def fetch_analysis_history(workspace_id, limit=20, offset=0):
+    total = count_analysis_records(workspace_id)
     records = list_analysis_records(workspace_id, limit=limit, offset=offset)
     items = [
         {
@@ -60,6 +82,7 @@ def fetch_analysis_history(workspace_id, limit=20, offset=0):
         "pagination": {
             "limit": limit,
             "offset": offset,
-            "total": count_analysis_records(workspace_id),
+            "total": total,
+            "has_more": offset + len(items) < total,
         },
     }

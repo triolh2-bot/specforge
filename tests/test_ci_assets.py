@@ -11,8 +11,10 @@ class CiAssetTests(unittest.TestCase):
 
         self.assertIn("lint:", workflow)
         self.assertIn("test:", workflow)
+        self.assertIn("smoke:", workflow)
         self.assertIn("build:", workflow)
         self.assertIn("python -m unittest discover -s tests -q", workflow)
+        self.assertIn("python -m unittest discover -s tests -p test_app_smoke.py -q", workflow)
         self.assertIn("docker build -t specforge:${{ github.sha }} .", workflow)
 
     def test_release_workflow_tags_main_pushes(self):
@@ -28,6 +30,7 @@ class CiAssetTests(unittest.TestCase):
 
         self.assertIn("CI / lint", doc)
         self.assertIn("CI / test", doc)
+        self.assertIn("CI / smoke", doc)
         self.assertIn("CI / build", doc)
         self.assertIn("Security / security", doc)
 

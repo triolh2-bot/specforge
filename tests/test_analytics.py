@@ -29,16 +29,8 @@ class TestConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
-    MINIMAX_CLIENT_ID = ""
-    MINIMAX_CLIENT_SECRET = ""
-    MINIMAX_REDIRECT_URI = ""
-    MINIMAX_AUTH_URL = "https://platform.minimaxi.com/oauth/authorize"
-    MINIMAX_TOKEN_URL = "https://platform.minimaxi.com/oauth/token"
-    MINIMAX_API_BASE = "https://api.minimaxi.com/v1"
-    MINIMAX_API_KEY = ""
-    MINIMAX_GROUP_ID = ""
-    MINIMAX_CHAT_API_URL = "https://api.minimax.chat/v1/text/chatcompletion_v2"
-    MINIMAX_MODEL = "MiniMax-M2.5"
+    OPENROUTER_API_KEY = ""
+    OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
@@ -83,12 +75,12 @@ class TestAnalyticsTracking(unittest.TestCase):
             event = track_funnel_event(
                 EventName.ANALYSIS_STARTED,
                 workspace_id="ws-123",
-                properties={"ai_provider": "minimax", "use_ai": True},
+                properties={"ai_provider": "openrouter", "use_ai": True},
             )
             self.assertIsNotNone(event)
             self.assertEqual(event.name, EventName.ANALYSIS_STARTED)
             props = json.loads(event.properties_json)
-            self.assertEqual(props["ai_provider"], "minimax")
+            self.assertEqual(props["ai_provider"], "openrouter")
 
 
 class AnalyticsIntegrationTests(unittest.TestCase):
@@ -118,7 +110,7 @@ class AnalyticsIntegrationTests(unittest.TestCase):
             json={
                 "requirements": requirements,
                 "ai_enhance": False,
-                "ai_provider": "minimax",
+                "ai_provider": "openrouter",
             },
         )
 
