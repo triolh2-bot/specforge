@@ -158,6 +158,9 @@ def analyze():
             raise
 
     try:
+        # Check first-analysis state BEFORE persisting the new record
+        is_first = _check_first_analysis(workspace_id)
+
         result = generate_prd(
             data["requirements"],
             data["ai_enhance"],
@@ -189,7 +192,6 @@ def analyze():
         )
 
         # Track first analysis (funnel)
-        is_first = _check_first_analysis(workspace_id)
         track_session_event(workspace_id=workspace_id, is_first_analysis=is_first, request_id=request_id)
 
         return json_response(result)

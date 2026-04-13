@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from specforge import create_app
 from specforge.extensions import db
+from specforge.services.observability import JsonFormatter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -101,14 +102,18 @@ class ObservabilityTests(unittest.TestCase):
 
         stream = io.StringIO()
         handler = logging.StreamHandler(stream)
+        handler.setFormatter(JsonFormatter())
         root_logger = logging.getLogger()
         previous_handlers = list(root_logger.handlers)
-        root_logger.handlers = [handler]
+        previous_level = root_logger.level
         try:
             new_app = create_app(type("Config", (TestConfig,), {
                 "SQLALCHEMY_DATABASE_URI": f"sqlite:///{os.path.join(self.tempdir.name, 'structured.db')}",
                 "MIGRATIONS_DIR": str(REPO_ROOT / "migrations"),
             }))
+            # Add capture handler AFTER configure_logging has run (during create_app)
+            root_logger.addHandler(handler)
+            root_logger.setLevel(logging.INFO)
             client = new_app.test_client()
             client.get("/health")
             log_output = stream.getvalue().strip().splitlines()[-1]
@@ -120,6 +125,7 @@ class ObservabilityTests(unittest.TestCase):
             self.assertIn("duration_ms", payload)
         finally:
             root_logger.handlers = previous_handlers
+            root_logger.level = previous_level
             with new_app.app_context():
                 db.session.remove()
                 db.engine.dispose()

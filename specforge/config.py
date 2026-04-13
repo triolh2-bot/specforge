@@ -61,3 +61,5 @@ class Config:
     PAYPAL_PLAN_ID_ENTERPRISE = os.environ.get("PAYPAL_PLAN_ID_ENTERPRISE", "")
     PAYPAL_PLAN_PRICE_PRO = os.environ.get("PAYPAL_PLAN_PRICE_PRO", "$19.99/month")
     PAYPAL_PLAN_PRICE_ENTERPRISE = os.environ.get("PAYPAL_PLAN_PRICE_ENTERPRISE", "$99.99/month")
+
+    METRICS_SECRET = os.environ.get("METRICS_SECRET", "")

@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     if app.config.get("QUOTA_ENFORCEMENT") == "off":
         print("   [WARNING] Quota enforcement is OFF — do not use in production!")
-    if app.config.get("SECRET_KEY") == "your-secret-key-here":
-        print("   [WARNING] SECRET_KEY is the default placeholder — set a real key before deploying!")
+    if not os.environ.get("SECRET_KEY"):
+        print("   [WARNING] SECRET_KEY is not set in the environment. A random key is being used — sessions will not survive restarts.")
 
     app.run(debug=debug, port=port, host="0.0.0.0")  # nosec B104 — required for Docker

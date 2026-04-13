@@ -103,6 +103,10 @@ class PayPalIntegrationTests(unittest.TestCase):
 
         self.app = create_app(_Config)
         self.client = self.app.test_client()
+        self.same_origin_headers = {
+            "Origin": "http://localhost",
+            "Referer": "http://localhost/",
+        }
 
     def tearDown(self):
         with self.app.app_context():

@@ -370,12 +370,10 @@
                     </button>
                 </div>
                 <div id="history-empty" class="text-center py-16 hidden">
-                    <div id="history-empty" class="text-center py-16">
-                        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <p class="text-gray-500 font-medium">No analyses yet</p>
-                        <p class="text-sm text-gray-400 mt-1">Run your first analysis to see it here.</p>
-                        <button onclick="switchView('analyze')" class="mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium">Go to Analyze →</button>
-                    </div>
+                    <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <p class="text-gray-500 font-medium">No analyses yet</p>
+                    <p class="text-sm text-gray-400 mt-1">Run your first analysis to see it here.</p>
+                    <button onclick="switchView('analyze')" class="mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium">Go to Analyze →</button>
                 </div>
             </div>
 
@@ -577,12 +575,6 @@
                 const resp = await fetch('/auth/status');
                 const data = await resp.json();
                 aiConnected = data.authenticated;
-
-                    authSection.innerHTML = `
-                        <div class="flex items-center gap-2 text-sm">
-                            <span class="w-2 h-2 bg-gray-300 rounded-full" aria-hidden="true"></span>
-                            <span class="text-gray-400 text-xs">AI Ready</span>
-                        </div>`;
             } catch (e) {
                 // Auth check failure is non-fatal
             }
@@ -1069,7 +1061,7 @@
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-900 truncate">${escapeHtml(item.requirements_preview || 'Analysis')}</p>
                                 <p class="text-xs text-gray-400 mt-1">
-                                    <span class="capitalize">${escapeHtml(item.domain)}</span> Â· RMS ${item.rms}/100 Â· ${new Date(item.created_at).toLocaleDateString()}
+                                    <span class="capitalize">${escapeHtml(item.domain)}</span> · RMS ${item.rms}/100 · ${new Date(item.created_at).toLocaleDateString()}
                                 </p>
                             </div>
                             <span class="text-xs px-2 py-1 rounded-full ${item.ai_enhance_requested ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-500'}">
