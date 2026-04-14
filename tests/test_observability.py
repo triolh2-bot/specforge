@@ -26,6 +26,7 @@ class TestConfig:
     OPENROUTER_MODEL = "openai/gpt-4o-mini"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     LOG_LEVEL = "INFO"
+    METRICS_SECRET = "test-metrics-secret"
 
 
 class ObservabilityTests(unittest.TestCase):
@@ -48,15 +49,17 @@ class ObservabilityTests(unittest.TestCase):
         self.tempdir.cleanup()
 
     def test_metrics_endpoint_reports_counters(self):
+        secret = self.app.config.get("METRICS_SECRET")
+        headers = {"Authorization": f"Bearer {secret}"}
+        
         self.client.get("/health")
-        self.client.get("/metrics")
-        response = self.client.get("/metrics")
+        response = self.client.get("/metrics", headers=headers)
         body = response.get_json()
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(body["status"], "ok")
         self.assertIn("counters", body)
-        self.assertGreaterEqual(body["counters"]["http_requests_total"], 2)
+        self.assertGreaterEqual(body["counters"]["http_requests_total"], 1)
 
     def test_health_endpoints_report_live_and_ready_state(self):
         live_response = self.client.get("/health/live")

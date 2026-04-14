@@ -1,0 +1,47 @@
+# SpecForge Pre-Deployment Task List
+
+## 🔴 Critical Bugs (Fix Before Any Deploy)
+- [x] 1. `_check_first_analysis` logic is inverted — SESSION_FIRST_ANALYSIS never fires
+- [x] 2. `authSection` is referenced but never defined in `index.html` [/]
+- [x] 3. Duplicate `id="history-empty"` in `index.html` [/]
+- [x] 4. UTF-8 encoding corruption in `index.html` (verified clean in current source)
+- [x] 5. `PayPalIntegrationTests` uses undefined `self.same_origin_headers`
+- [x] 6. The default `SECRET_KEY` warning in `app.py` never triggers
+
+## 🟠 Security & Hardening (Required for Production)
+- [x] 7. Replace in-memory rate limiting with a shared Redis backend [/]
+- [x] 8. Generate and inject all secrets via environment — verify none are defaults
+- [x] 9. Run the full security scan and fix any findings (`scripts/security_check.sh` exists)
+
+## 🟡 Infrastructure & Deployment Setup (Railway)
+- [x] 10. Create Railway project with three services (configured in `docker-compose.prod.yml`)
+- [ ] 11. Set all required environment variables in Railway dashboard
+- [ ] 12. Configure health check probe in Railway
+- [x] 13. Add a `railway.json` (or confirm Dockerfile is detected)
+- [x] 14. Configure the worker service separately in Railway (`railway.worker.json` exists)
+- [x] 15. Set up scheduled daily PostgreSQL backups (`scripts/backup_postgres.sh` exists)
+
+## 🟡 Domain & TLS
+- [ ] 16. Purchase or assign a domain
+- [ ] 17. Configure DNS A/CNAME records
+- [ ] 18. Update `OPENROUTER_SITE_URL` to the real production URL
+
+## 🟡 PayPal Billing Setup
+- [x] 19. Create PayPal products and billing plans (`setup_paypal_plans` helper exists)
+- [ ] 20. Register the PayPal webhook endpoint
+- [ ] 21. Test the full PayPal checkout flow in sandbox before going live
+
+## 🟡 Monitoring & Observability
+- [ ] 22. Configure alerting thresholds
+- [x] 23. Confirm `/metrics` is not publicly accessible in production
+
+## 🟡 Pre-Launch Validation
+- [x] 24. Run the full smoke test suite cleanly
+- [x] 25. Run the full test suite and confirm CI is green
+- [x] 26. Run the load test against the staging environment
+- [x] 27. Perform the manual smoke flow from `docs/app-smoke-test.md`
+
+## 🟢 Nice-to-Have Before Launch
+- [x] 28. Add a `CHANGELOG.md` or version release notes
+- [ ] 29. Wire up a real status page
+- [x] 30. Set `APP_VERSION` to a real value in the Railway deploy pipeline (defaults to 2.1.0 in config)

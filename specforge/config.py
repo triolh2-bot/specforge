@@ -63,3 +63,4 @@ class Config:
     PAYPAL_PLAN_PRICE_ENTERPRISE = os.environ.get("PAYPAL_PLAN_PRICE_ENTERPRISE", "$99.99/month")
 
     METRICS_SECRET = os.environ.get("METRICS_SECRET", "")
+    REDIS_URL = os.environ.get("REDIS_URL", "")

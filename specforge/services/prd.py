@@ -40,7 +40,7 @@ def _split_values(value: Optional[str]) -> list[str]:
 
 def _question_id(question: str, blocking_section: str) -> str:
     key = f"{blocking_section}:{question}".encode("utf-8")
-    return hashlib.sha1(key).hexdigest()[:12]
+    return hashlib.sha1(key, usedforsecurity=False).hexdigest()[:12]
 
 
 def _stage(name: str, status: str, message: str) -> dict[str, str]:

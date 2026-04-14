@@ -28,10 +28,59 @@ class InMemoryRateLimiter:
         return True, None
 
 
+class RedisRateLimiter:
+    def __init__(self, redis_url):
+        import redis
+        self.redis = redis.from_url(redis_url)
+
+    def allow(self, key, limit, window_seconds):
+        try:
+            # Atomic rate limiting using Lua script
+            script = """
+            local key = KEYS[1]
+            local limit = tonumber(ARGV[1])
+            local window = tonumber(ARGV[2])
+            local now = tonumber(ARGV[3])
+            
+            redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
+            local count = redis.call('ZCARD', key)
+            
+            if count >= limit then
+                local first = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+                local retry_after = 1
+                if #first > 0 then
+                    retry_after = math.max(1, math.ceil(tonumber(first[2]) + window - now))
+                end
+                return {0, retry_after}
+            end
+            
+            redis.call('ZADD', key, now, now)
+            redis.call('EXPIRE', key, window)
+            return {1, 0}
+            """
+            now = time.time()
+            res = self.redis.eval(script, 1, key, limit, window_seconds, now)
+            return bool(res[0]), res[1]
+        except Exception as e:
+            # Fallback to allowing request if Redis fails (fail-open for availability)
+            current_app.logger.error(f"Redis rate limiter error: {e}")
+            return True, None
+
+
 def get_rate_limiter():
     limiter = current_app.extensions.get("rate_limiter")
     if limiter is None:
-        limiter = InMemoryRateLimiter()
+        redis_url = current_app.config.get("REDIS_URL")
+        if redis_url:
+            try:
+                limiter = RedisRateLimiter(redis_url)
+                current_app.logger.info("Using RedisRateLimiter")
+            except Exception as e:
+                current_app.logger.error(f"Failed to initialize RedisRateLimiter: {e}")
+                limiter = InMemoryRateLimiter()
+        else:
+            limiter = InMemoryRateLimiter()
+            current_app.logger.info("Using InMemoryRateLimiter")
         current_app.extensions["rate_limiter"] = limiter
     return limiter
 
